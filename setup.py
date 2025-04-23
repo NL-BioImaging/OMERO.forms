@@ -32,7 +32,12 @@ AUTHOR = "D.P.W. Russell"
 LICENSE = "AGPL-3.0"
 HOMEPAGE = "https://github.com/sorgerlab/OMERO.forms"
 
-REQUIREMENTS = ["omero-web>=5.6.0"]
+REQUIREMENTS = [
+    "omero-web>=5.6.0",
+    "django>=3.2,<4.0"
+]
+
+PYTHON_REQUIRES = ">=3.7"
 
 
 def require_npm(command, strict=False):
@@ -83,7 +88,7 @@ setup(
     download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),
     keywords=["OMERO.web", "forms", "provenance", "history"],
     install_requires=REQUIREMENTS,
-    python_requires="~=3.5",
+    python_requires=PYTHON_REQUIRES,
     include_package_data=True,
     zip_safe=False,
     cmdclass={

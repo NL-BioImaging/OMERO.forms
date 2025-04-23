@@ -1,9 +1,10 @@
 // webpack.config.js
-var webpack = require('webpack');
+const webpack = require('webpack');
 const TerserPlugin = require("terser-webpack-plugin");
-var path = require('path');
+const path = require('path');
 
 module.exports = {
+  mode: 'production',
   entry: {
     'bundle.min': ['whatwg-fetch', './src/main.jsx'],
     'bundle': ['whatwg-fetch', './src/main.jsx'],
@@ -12,98 +13,68 @@ module.exports = {
   },
   optimization: {
     minimize: true,
-    minimizer: [new TerserPlugin()],
+    minimizer: [new TerserPlugin({
+      terserOptions: {
+        format: {
+          comments: false,
+        },
+      },
+      extractComments: false,
+    })],
   },
   output: {
-    path: __dirname + '/omero_forms/static/forms/js',
+    path: path.resolve(__dirname, 'omero_forms/static/forms/js'),
     filename: '[name].js',
-    library: 'omeroforms'
+    library: {
+      name: 'omeroforms',
+      type: 'umd'
+    },
+    clean: true
   },
-  plugins: [],
   module: {
     rules: [
       {
-        test: /\.jsx$/,
-        loader: 'babel-loader',
+        test: /\.jsx?$/,
         exclude: /node_modules/,
-        options: {
-          plugins: ['transform-runtime'],
-          presets: ['@babel/react', '@babel/env']
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env', '@babel/preset-react'],
+            plugins: ['@babel/plugin-transform-runtime']
+          }
         }
       },
       {
-        test: /\.js$/,
-        loader: 'babel-loader',
-        exclude: /node_modules/,
-        options: {
-          plugins: ['transform-runtime'],
-          presets: ['@babel/env']
+        test: /\.css$/,
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              modules: {
+                auto: true
+              }
+            }
+          },
+          'postcss-loader'
+        ]
+      },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,
+        type: 'asset',
+        parser: {
+          dataUrlCondition: {
+            maxSize: 8192
+          }
         }
       },
       {
-        test: /\.css$/, // Only .css files
-        use: ['style-loader', 'css-loader'], // Run both loaders
-      },
-      { 
-        test: /\.png$/,
-        use: [
-          {
-            loader: "url-loader",
-            options: {
-              limit: 100000,
-            },
-          },
-        ],
-      },
-
-      // Bootstrap
-      {
-        test: /\.(woff|woff2)(\?v=\d+\.\d+\.\d+)?$/,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 10000,
-              mimetype: 'application/font-woff',
-            },
-          },
-        ],
-      },
-      {
-        test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 10000,
-              mimetype: 'application/octet-stream',
-            },
-          },
-        ],
-      },
-      {
-        test: /\.eot(\?v=\d+\.\d+\.\d+)?$/,
-        use: [
-          {
-            loader: 'file-loader',
-          },
-        ],
-      },
-      {
-        test: /\.svg(\?v=\d+\.\d+\.\d+)?$/,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 10000,
-              mimetype: 'image/svg+xml',
-            },
-          },
-        ],
+        test: /\.(woff|woff2|eot|ttf|otf)$/i,
+        type: 'asset/resource'
       }
     ]
   },
   resolve: {
     extensions: ['.js', '.jsx', '.json']
-  },
+  }
 };

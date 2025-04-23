@@ -5,7 +5,6 @@ import Assigner from './designer-assigner';
 // import './bootstrap.css';
 import './designer-styles.css';
 import "codemirror/lib/codemirror.css";
-import 'react-select/dist/react-select.css';
 
 class App extends React.Component {
   constructor(props) {

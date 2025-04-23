@@ -3,7 +3,6 @@ import Select from 'react-select';
 import Forms from './Forms';
 import History from './History';
 
-import 'react-select/dist/react-select.css';
 import './forms.css';
 import './bootstrap.css';
 

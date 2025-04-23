@@ -1,12 +1,13 @@
 import React from 'react';
-import CodeMirror from 'react-codemirror2';
+import { Controlled as CodeMirror } from 'react-codemirror2';
 import Select from 'react-select';
 import 'codemirror/mode/javascript/javascript';
-import { shouldRender } from "@rjsf/core/lib/utils";
+import { shouldRender } from "@rjsf/utils";
 import defaultData from './designer-default';
 const samples = {};
 import Form from '@rjsf/core';
-import { Modal, Button, FormGroup, FormControl, ControlLabel, HelpBlock, Checkbox } from 'react-bootstrap'
+import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
+import { Form as BootstrapForm } from 'react-bootstrap';
 
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
@@ -93,7 +94,7 @@ class NameModal extends React.Component {
               <FormGroup
                 controlId="formNameText"
               >
-                <ControlLabel>Form Name</ControlLabel>
+                <BootstrapForm.Label>Form Name</BootstrapForm.Label>
                 <FormControl
                   type="text"
                   value={ name }
@@ -101,7 +102,7 @@ class NameModal extends React.Component {
                   onChange={ this.handleChange }
                 />
                 <FormControl.Feedback />
-                <HelpBlock>This must be a unique string within the context of the OMERO instance. Forms can be overwritten by the original creator or an admin.</HelpBlock>
+                <BootstrapForm.Text>This must be a unique string within the context of the OMERO instance. Forms can be overwritten by the original creator or an admin.</BootstrapForm.Text>
               </FormGroup>
           </Modal.Body>
           <Modal.Footer>
@@ -454,7 +455,7 @@ export default class Editor extends React.Component {
                 </div>
 
                 <div className='col-sm-2'>
-                  <Checkbox onChange={ this.setLiveValidate } checked={ liveValidate }>Live Validation</Checkbox>
+                  <BootstrapForm.Check onChange={ this.setLiveValidate } checked={ liveValidate }>Live Validation</BootstrapForm.Check>
                 </div>
 
               </div>
