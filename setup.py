@@ -59,7 +59,7 @@ def require_npm(command, strict=False):
 
 setup(
     name="omero-forms",
-    packages=find_packages(exclude=["ez_setup"]),
+    packages=find_packages(),
     version=VERSION,
     description=DESCRIPTION,
     long_description=read_file("README.rst"),
@@ -87,8 +87,11 @@ setup(
     url=HOMEPAGE,
     download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),
     keywords=["OMERO.web", "forms", "provenance", "history"],
-    install_requires=REQUIREMENTS,
-    python_requires=PYTHON_REQUIRES,
+    install_requires=[
+        'omero-web>=5.6.0',
+        'django>=3.2,<4.0',
+    ],
+    python_requires='>=3.7',
     include_package_data=True,
     zip_safe=False,
     cmdclass={
