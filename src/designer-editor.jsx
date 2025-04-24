@@ -1,7 +1,8 @@
 import React from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
-import Select from 'react-select';
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/lib/codemirror.css';
+import Select from 'react-select';
 import { shouldRender } from "@rjsf/utils";
 import defaultData from './designer-default';
 const samples = {};
@@ -152,7 +153,7 @@ class CodeEditor extends React.Component {
           <span className={`${cls} glyphicon glyphicon-${icon}`} />
           {' ' + title}
         </div>
-        <Codemirror
+        <CodeMirror
           value={this.state.code}
           onChange={this.onCodeChange}
           options={Object.assign({}, cmOptions)} />
