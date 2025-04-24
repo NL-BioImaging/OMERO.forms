@@ -39,7 +39,7 @@
         </div>
         <iframe 
           id="formsIframe"
-          src="{% url 'omeroforms_iframe' %}?id=1&type=dataset" 
+          src="{% url 'omeroforms_iframe' %}?id=301&type=dataset" 
           width="100%" 
           height="600px"
           style="border: 1px solid #ddd; border-radius: 4px;">
@@ -57,7 +57,10 @@
       var id = document.getElementById('objId').value;
       var type = document.getElementById('objType').value;
       var iframe = document.getElementById('formsIframe');
+      
+      // Update both the iframe src and reload it to ensure fresh state
       iframe.src = "{% url 'omeroforms_iframe' %}?id=" + id + "&type=" + type;
+      iframe.contentWindow.location.reload();
     }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
