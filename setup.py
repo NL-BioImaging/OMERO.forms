@@ -94,10 +94,11 @@ setup(
     python_requires='>=3.7',
     package_data={
         "omero_forms": [
-            # Static files
+            "static/forms/js/*",
             "static/forms/js/*.js",
-            # Template files
+            "templates/forms/*",
             "templates/forms/*.html",
+            "templates/*/*",
         ],
     },
     include_package_data=True,
