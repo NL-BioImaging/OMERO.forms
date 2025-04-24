@@ -92,6 +92,14 @@ setup(
         'django>=3.2,<4.0',
     ],
     python_requires='>=3.7',
+    package_data={
+        "omero_forms": [
+            # Static files
+            "static/forms/js/*.js",
+            # Template files
+            "templates/forms/*.html",
+        ],
+    },
     include_package_data=True,
     zip_safe=False,
     cmdclass={
