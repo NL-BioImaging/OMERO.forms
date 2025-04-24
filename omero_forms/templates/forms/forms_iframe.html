@@ -2,29 +2,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="{% static 'webclient/css/activities.css' %}" type="text/css" />
+    <link rel="stylesheet" href="{% static 'webgateway/css/ome.body.css' %}" type="text/css" />
+    <link rel="stylesheet" href="{% static 'webgateway/css/ome.viewport.css' %}" type="text/css" />
+    <link rel="stylesheet" href="{% static '3rdparty/jquery-ui-1.11.4/jquery-ui.min.css' %}" type="text/css" />
     <script src="{% static 'forms/js/bundle.js' %}"></script>
 </head>
 <body>
-<script>
-$(function() {
-    // Get parameters from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const objId = urlParams.get('id');
-    const objType = urlParams.get('type');
+    <!-- Container div with same ID as in center panel plugin -->
+    <div id="omero_forms_panel"></div>
 
-    if (!objId || !objType) {
-        console.error('Missing required parameters: id and type');
-        return;
-    }
+    <script>
+    $(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const objId = urlParams.get('id');
+        const objType = urlParams.get('type');
 
-    const urls = {
-        base: "{% url 'omeroforms_base' %}"
-    };
+        if (!objId || !objType) {
+            console.error('Missing required parameters: id and type');
+            return;
+        }
 
-    // Directly render the form without tree dependency
-    omeroforms.default(objId, objType.charAt(0).toUpperCase() + objType.slice(1), urls);
-});
-</script>
+        const urls = {
+            base: "{% url 'omeroforms_base' %}"
+        };
+
+        // Same target div as used in the center panel
+        omeroforms.default(objId, objType.charAt(0).toUpperCase() + objType.slice(1), urls);
+    });
+    </script>
 </body>
 </html>
