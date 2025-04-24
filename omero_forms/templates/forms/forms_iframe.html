@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="{% static 'webclient/css/activities.css'|add:suffix %}" type="text/css" />
+    <script src="{% static 'forms/js/bundle.js' %}"></script>
+</head>
+<body>
+<script>
+$(function() {
+    // Get parameters from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const objId = urlParams.get('id');
+    const objType = urlParams.get('type');
+
+    if (!objId || !objType) {
+        console.error('Missing required parameters: id and type');
+        return;
+    }
+
+    const urls = {
+        base: "{% url 'omeroforms_base' %}"
+    };
+
+    // Directly render the form without tree dependency
+    omeroforms.default(objId, objType.charAt(0).toUpperCase() + objType.slice(1), urls);
+});
+</script>
+</body>
+</html>

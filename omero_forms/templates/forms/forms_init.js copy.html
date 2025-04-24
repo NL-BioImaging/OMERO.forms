@@ -1,0 +1,74 @@
+<script src="{% static "forms/js/bundle.js" %}"></script>
+
+<script>
+
+$(function() {
+
+  var pluginIndex = {{ forloop.counter }};
+  var urls = {
+    base: "{% url 'omeroforms_base' %}"
+  };
+
+  var reactRender = function(datatree, selectedNode) {
+    var objId = selectedNode.data.obj.id;
+    var objType = selectedNode.type.charAt(0).toUpperCase() + selectedNode.type.slice(1);
+    omeroforms.default(objId, objType, urls);
+  };
+
+  $("#omero_forms_panel").omeroweb_center_plugin({
+    plugin_index: pluginIndex,        // From the Django template loop
+    empty_on_sel_change: false,       // Do not completely erase content when changing selection
+    load_plugin_content: function(selected, dtype, oid) {
+
+      // this may have been called before datatree was initialised...
+      var datatree = $.jstree.reference('#dataTree');
+      if (!datatree) return;
+
+      // We use the tree to access selected objects, since we can traverse
+      // to check parents etc...
+      // Note: We do not use the parameters selected, dtype or oid as
+      // it is easier to use the tree directly as these do not refer to
+      // a jstree node
+      var tree_selected = datatree.get_selected(true);
+
+      if (tree_selected === undefined) {
+        return;
+      }
+
+      // TODO Handle multi-selection
+      var selected = tree_selected[0];
+
+      // If the selected object is an image, return the parent dataset
+      // unless it is an orphan
+      if (selected.type === 'image') {
+        // Set selected to be the parent so that lastSelected can be compared
+        // to the container
+        selected = datatree.get_node(datatree.get_parent(selected));
+        if (selected.type === 'dataset') {
+          reactRender(datatree, selected);
+        }
+      }
+
+      // If the selected object is a Dataset, Project, Plate or Screen
+      else if (
+        selected.type === 'dataset'
+        || selected.type === 'project'
+        || selected.type === 'plate'
+        || selected.type === 'screen'
+      ){
+        // Make sure that the dataset is loaded
+        if (!datatree.is_loaded(selected)) {
+          datatree.load_node(selected, function(node, status){
+            reactRender(datatree, datatree.get_node(node));
+          });
+        } else {
+          reactRender(datatree, datatree.get_node(selected));
+        }
+      }
+
+    },
+    supported_obj_types: ['image', 'dataset', 'project', 'plate', 'screen']
+  });
+});
+
+</script>
