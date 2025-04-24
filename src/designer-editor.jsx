@@ -6,6 +6,7 @@ import { shouldRender } from "@rjsf/utils";
 import defaultData from './designer-default';
 const samples = {};
 import Form from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';  // Add this import
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
 
@@ -519,6 +520,7 @@ export default class Editor extends React.Component {
           <Form
             liveValidate={liveValidate}
             schema={schema}
+            validator={validator}
             uiSchema={uiSchema}
             formData={formData}
             onChange={this.onFormDataChange}
