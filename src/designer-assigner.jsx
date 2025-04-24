@@ -8,12 +8,15 @@ export default class Assigner extends React.Component {
     this.state = {
       formId: undefined,
       formGroupIds: [],
-      assignments: {}
+      assignments: {},
+      selectedGroup: null,
+      selectedForm: null
     };
 
     this.selectForm = this.selectForm.bind(this);
     this.selectGroups = this.selectGroups.bind(this);
     this.saveAssignment = this.saveAssignment.bind(this);
+    this.loadForm = this.loadForm.bind(this);
   }
 
   componentDidMount() {
@@ -40,6 +43,10 @@ export default class Assigner extends React.Component {
         });
       }
     );
+  }
+
+  loadForm(formId) {
+    // Logic to load form details can be added here
   }
 
   updateAssignments(form_id, group_ids) {
@@ -160,7 +167,7 @@ export default class Assigner extends React.Component {
   }
 
   render() {
-    const { formId, formGroupIds } = this.state;
+    const { formId, formGroupIds, selectedGroup, selectedForm } = this.state;
     const { forms, groups } = this.props;
 
     const formOptions = Object.keys(forms).sort().map(key => {
@@ -187,21 +194,35 @@ export default class Assigner extends React.Component {
             <div className="col-sm-3">
               <Select
                 name='form-chooser'
-                placeholder='Select form...'
-                options={ formOptions }
-                value={ formId }
-                onChange={ this.selectForm }
+                placeholder='Select a form...'
+                value={selectedForm ? { value: selectedForm, label: selectedForm } : null}
+                options={Object.keys(forms).map(form => ({ value: form, label: form }))}
+                onChange={(selection) => {
+                    // Handle null selection
+                    if (!selection) {
+                        this.setState({ selectedForm: null });
+                        return;
+                    }
+                    this.setState({ selectedForm: selection.value });
+                    this.loadForm(selection.value);
+                }}
               />
             </div>
 
             <div className="col-sm-8">
               <Select
                 name='group-chooser'
-                placeholder='Select group...'
-                multi={ true }
-                options={ groupOptions }
-                value={ formGroupIds }
-                onChange={ this.selectGroups }
+                placeholder='Select a group...'
+                value={selectedGroup ? { value: selectedGroup, label: selectedGroup } : null}
+                options={groups.map(group => ({ value: group, label: group }))}
+                onChange={(selection) => {
+                    // Handle null selection
+                    if (!selection) {
+                        this.setState({ selectedGroup: null });
+                        return;
+                    }
+                    this.setState({ selectedGroup: selection.value });
+                }}
               />
             </div>
 

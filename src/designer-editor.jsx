@@ -243,14 +243,24 @@ export default class Editor extends React.Component {
   }
 
   selectForm(selection) {
-    const { forms } = this.props;
-    if (selection && selection.value) {
-      this.setState({
+    // Early return if nothing selected
+    if (!selection) {
+        this.setState({
+            formId: '',
+            message: '',
+            schema: defaultData.schema,
+            uiSchema: defaultData.uiSchema,
+            formTypes: []
+        });
+        return;
+    }
+
+    // Load selected form
+    this.setState({
         formId: selection.value,
         message: ''
-      });
-      this.loadForm(selection.value);
-    }
+    });
+    this.loadForm(selection.value);
   }
 
   selectTypes(selection) {
