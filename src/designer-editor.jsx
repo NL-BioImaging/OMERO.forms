@@ -14,17 +14,21 @@ import { Form as BootstrapForm } from 'react-bootstrap';
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
 CodeMirror.prototype.componentWillReceiveProps = function (nextProps) {
-  if (this.codeMirror &&
-      nextProps.value !== undefined &&
+  if (!this.codeMirror) {
+    return; // Early return if codeMirror instance doesn't exist yet
+  }
+
+  if (nextProps.value !== undefined && 
       this.codeMirror.getValue() != nextProps.value) {
     this.codeMirror.setValue(nextProps.value);
   }
-  if (typeof nextProps.options === 'object') {
-    for (var optionName in nextProps.options) {
-      if (nextProps.options.hasOwnProperty(optionName)) {
+
+  if (typeof nextProps.options === 'object' && nextProps.options) {
+    Object.keys(nextProps.options).forEach(optionName => {
+      if (this.codeMirror && this.codeMirror.setOption) {
         this.codeMirror.setOption(optionName, nextProps.options[optionName]);
       }
-    }
+    });
   }
 };
 
@@ -120,33 +124,30 @@ class NameModal extends React.Component {
 class CodeEditor extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {valid: true, code: props.code};
+    this.state = {
+      valid: true, 
+      code: props.code,
+      options: Object.assign({}, cmOptions)  // Store options in state
+    };
   }
 
-  componentWillReceiveProps(props) {
-    this.setState({valid: true, code: props.code});
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    return shouldRender(this, nextProps, nextState);
-  }
-
-  onCodeChange = (code) => {
-    this.setState({valid: true, code});
-    setImmediate(() => {
-      try {
-        this.props.onChange(fromJson(this.state.code));
-      } catch(err) {
-        console.error(err);
-        this.setState({valid: false, code});
-      }
-    });
+  onCodeChange = (editor, data, value) => {
+    this.setState({ valid: true, code: value });
+    try {
+      const parsed = fromJson(value);
+      this.props.onChange(parsed);
+    } catch(err) {
+      console.error(err);
+      this.setState({ valid: false });
+    }
   };
 
   render() {
     const { title } = this.props;
-    const icon = this.state.valid ? 'ok' : 'remove';
-    const cls = this.state.valid ? 'valid' : 'invalid';
+    const { code, options, valid } = this.state;
+    const icon = valid ? 'ok' : 'remove';
+    const cls = valid ? 'valid' : 'invalid';
+
     return (
       <div className='panel panel-default'>
         <div className='panel-heading'>
@@ -154,14 +155,17 @@ class CodeEditor extends React.Component {
           {' ' + title}
         </div>
         <CodeMirror
-          value={this.state.code}
+          value={code}
+          options={options}
+          onBeforeChange={(editor, data, value) => {
+            this.setState({ code: value });
+          }}
           onChange={this.onCodeChange}
-          options={Object.assign({}, cmOptions)} />
+        />
       </div>
     );
   }
 }
-
 
 export default class Editor extends React.Component {
   constructor(props) {
@@ -250,8 +254,15 @@ export default class Editor extends React.Component {
   }
 
   selectTypes(selection) {
+    // Handle null/undefined selection
+    if (!selection) {
+      this.setState({ formTypes: [] });
+      return;
+    }
+    // Convert single selection to array if needed
+    const selections = Array.isArray(selection) ? selection : [selection];
     this.setState({
-      formTypes: selection.map(s => s.value)
+      formTypes: selections.map(s => s.value)
     });
   }
 
@@ -472,10 +483,10 @@ export default class Editor extends React.Component {
                     <Select
                       name='type-chooser'
                       placeholder='Select applicable types...'
-                      multi={ true }
-                      options={ typeOptions }
-                      value={ formTypes }
-                      onChange={ this.selectTypes }
+                      isMulti={true}
+                      options={typeOptions}
+                      value={formTypes.map(type => ({ value: type, label: type }))}
+                      onChange={this.selectTypes}
                       id='objTypes'
                     />
                   </div>
