@@ -77,6 +77,12 @@ The list of changes in reverse chronological order are presented on the left alo
 Installation
 ============
 
+This fork of OMERO.forms is published as `biomero-forms` on PyPI.
+
+::
+
+    pip install biomero-forms
+
 Before configuring the plugin, create an administrative user in OMERO. In this example that user is called 'formmaster'. This user should not be a member of any groups other than the 'system' group that all administrators are a part of. Give this user a secure password. This can be done with the CLI.
 
 ::
@@ -108,28 +114,41 @@ Perform the installation steps
 Contributing
 ================
 
-OMERO.forms uses node and webpack.
+OMERO.forms uses Node.js and webpack for frontend builds. The package is distributed via PyPI.
 
 Building for production
 =======================
 
-This will build `static/forms/js/bundle.js` which contains basically the whole
-project including CSS. It is minified.
+This will build `static/forms/js/bundle.js` which contains the minified frontend code including CSS:
 
 ::
 
-  npm install
-  node_modules/webpack/bin/webpack.js -p
-
+    npm install --force
+    node_modules/.bin/webpack --mode production
 
 Building for development
 ========================
 
 This will detect changes and rebuild `static/forms/js/bundle.js` when there
 are any. This works in conjunction with django development server as that
-will be monitoring `bundle.js` for any changes.
+will be monitoring `bundle.js` for any changes:
 
 ::
 
-  npm install
-  node_modules/webpack/bin/webpack.js --watch
+    npm install --force
+    node_modules/.bin/webpack --watch --mode development
+
+Publishing Releases
+=================
+
+1. Create a new release on GitHub
+2. The GitHub Action will automatically:
+   - Build the frontend assets
+   - Create a Python package
+   - Publish to PyPI
+
+The package can then be installed via pip:
+
+::
+
+    pip install biomero-forms

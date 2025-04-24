@@ -28,16 +28,16 @@ def read_version():
 
 VERSION = read_version()
 DESCRIPTION = "OMERO forms app for enhanced metadata input and provenance"
-AUTHOR = "D.P.W. Russell"
+AUTHOR = "D.P.W. Russell, mmongy, T.T. Luik"
 LICENSE = "AGPL-3.0"
-HOMEPAGE = "https://github.com/sorgerlab/OMERO.forms"
+HOMEPAGE = "https://github.com/Cellular-Imaging-Amsterdam-UMC/OMERO.forms"
 
 REQUIREMENTS = [
     "omero-web>=5.6.0",
-    "django>=3.2,<4.0"
+    "django>=4.2,<5.0",  # Match OMERO.web and BIOMERO Django version
 ]
 
-PYTHON_REQUIRES = ">=3.7"
+PYTHON_REQUIRES = ">=3.9"  # Match BIOMERO's Python requirement
 
 
 def require_npm(command, strict=False):
@@ -58,7 +58,7 @@ def require_npm(command, strict=False):
 
 
 setup(
-    name="omero-forms",
+    name="biomero-forms",
     packages=find_packages(),
     version=VERSION,
     description=DESCRIPTION,
@@ -84,14 +84,11 @@ setup(
     author=AUTHOR,
     author_email="dpwrussell@gmail.com",
     license=LICENSE,
-    url=HOMEPAGE,
-    download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),
-    keywords=["OMERO.web", "forms", "provenance", "history"],
-    install_requires=[
-        'omero-web>=5.6.0',
-        'django>=3.2,<4.0',
-    ],
-    python_requires='>=3.7',
+    url="https://github.com/Cellular-Imaging-Amsterdam-UMC/OMERO.forms",
+    download_url="%s/archive/%s.tar.gz" % ("https://github.com/Cellular-Imaging-Amsterdam-UMC/OMERO.forms", VERSION),
+    keywords=["OMERO.web", "BIOMERO", "forms", "provenance", "history"],
+    install_requires=REQUIREMENTS,
+    python_requires=PYTHON_REQUIRES,
     package_data={
         "omero_forms": [
             "static/forms/js/*",
