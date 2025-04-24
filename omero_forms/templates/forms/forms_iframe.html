@@ -2,31 +2,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="{% static 'webgateway/css/ome.body.css' %}" type="text/css" />
-    <link rel="stylesheet" href="{% static 'webgateway/css/ome.viewport.css' %}" type="text/css" />
-    <link rel="stylesheet" href="{% static '3rdparty/jquery-ui-1.11.4/jquery-ui.min.css' %}" type="text/css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="{% static 'forms/js/bundle.js' %}"></script>
 </head>
 <body>
-    <!-- Container div with same ID as in center panel plugin -->
     <div id="omero_forms_panel"></div>
 
     <script>
     $(function() {
         const urlParams = new URLSearchParams(window.location.search);
-        const objId = urlParams.get('id');
-        const objType = urlParams.get('type');
-
-        if (!objId || !objType) {
-            console.error('Missing required parameters: id and type');
-            return;
-        }
+        const objId = urlParams.get('id') || '301';  // Default to 301
+        const objType = urlParams.get('type') || 'dataset';  // Default to dataset
 
         const urls = {
             base: "{% url 'omeroforms_base' %}"
         };
 
-        // Same target div as used in the center panel
+        // Initialize form
         omeroforms.default(objId, objType.charAt(0).toUpperCase() + objType.slice(1), urls);
     });
     </script>
