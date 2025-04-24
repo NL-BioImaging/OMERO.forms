@@ -170,13 +170,13 @@ export default class Assigner extends React.Component {
     const { formId, formGroupIds, selectedGroup, selectedForm } = this.state;
     const { forms, groups } = this.props;
 
-    // Format form options
+    // Format form options - using form ID from forms object
     const formOptions = Object.keys(forms).sort().map(key => ({
         value: forms[key].id,
         label: key
     }));
 
-    // Fix group options formatting to use proper group properties
+    // Group options with proper ID
     const groupOptions = groups.map(group => ({
         value: group.id,
         label: `${group.name} (${group.id})`
@@ -190,7 +190,7 @@ export default class Assigner extends React.Component {
               <Select
                 name='form-chooser'
                 placeholder='Select a form...'
-                value={selectedForm ? { value: selectedForm.id, label: selectedForm.name } : null}
+                value={formOptions.find(opt => opt.value === formId) || null}
                 options={formOptions}
                 onChange={this.selectForm}
               />
@@ -199,26 +199,23 @@ export default class Assigner extends React.Component {
             <div className="col-sm-8">
               <Select
                 name='group-chooser'
-                placeholder='Select a group...'
-                value={selectedGroup ? { 
-                    value: selectedGroup.id, 
-                    label: `${selectedGroup.name} (${selectedGroup.id})` 
-                } : null}
+                placeholder='Select groups...'
+                isMulti={true}
+                value={groupOptions.filter(opt => formGroupIds.includes(opt.value))}
                 options={groupOptions}
-                onChange={(selection) => {
-                    if (!selection) {
-                        this.setState({ selectedGroup: null });
-                        return;
-                    }
-                    // Find the full group object from the groups array
-                    const selectedGroup = groups.find(g => g.id === selection.value);
-                    this.setState({ selectedGroup });
-                }}
+                onChange={this.selectGroups}
               />
             </div>
 
             <div className="col-sm-1">
-              <button type="button" className="btn btn-default" onClick={this.saveAssignment}>Save</button>
+              <button 
+                type="button" 
+                className="btn btn-default" 
+                onClick={this.saveAssignment}
+                disabled={!formId || formGroupIds.length === 0}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
