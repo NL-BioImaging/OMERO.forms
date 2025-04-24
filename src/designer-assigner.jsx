@@ -170,42 +170,29 @@ export default class Assigner extends React.Component {
     const { formId, formGroupIds, selectedGroup, selectedForm } = this.state;
     const { forms, groups } = this.props;
 
-    const formOptions = Object.keys(forms).sort().map(key => {
-      return {
+    // Format form options
+    const formOptions = Object.keys(forms).sort().map(key => ({
         value: forms[key].id,
         label: key
-      };
-    });
-
-    const groupOptions = groups.map(group => ({
-      value: group.id,
-      label: `${group.name} (${group.id})`
     }));
 
-    const form = formId ? forms[formId] : undefined;
+    // Fix group options formatting to use proper group properties
+    const groupOptions = groups.map(group => ({
+        value: group.id,
+        label: `${group.name} (${group.id})`
+    }));
 
     return (
       <div>
-
-
-
         <div className='panel panel-default'>
           <div className='panel-body'>
             <div className="col-sm-3">
               <Select
                 name='form-chooser'
                 placeholder='Select a form...'
-                value={selectedForm ? { value: selectedForm, label: selectedForm } : null}
-                options={Object.keys(forms).map(form => ({ value: form, label: form }))}
-                onChange={(selection) => {
-                    // Handle null selection
-                    if (!selection) {
-                        this.setState({ selectedForm: null });
-                        return;
-                    }
-                    this.setState({ selectedForm: selection.value });
-                    this.loadForm(selection.value);
-                }}
+                value={selectedForm ? { value: selectedForm.id, label: selectedForm.name } : null}
+                options={formOptions}
+                onChange={this.selectForm}
               />
             </div>
 
@@ -213,30 +200,30 @@ export default class Assigner extends React.Component {
               <Select
                 name='group-chooser'
                 placeholder='Select a group...'
-                value={selectedGroup ? { value: selectedGroup, label: selectedGroup } : null}
-                options={groups.map(group => ({ value: group, label: group }))}
+                value={selectedGroup ? { 
+                    value: selectedGroup.id, 
+                    label: `${selectedGroup.name} (${selectedGroup.id})` 
+                } : null}
+                options={groupOptions}
                 onChange={(selection) => {
-                    // Handle null selection
                     if (!selection) {
                         this.setState({ selectedGroup: null });
                         return;
                     }
-                    this.setState({ selectedGroup: selection.value });
+                    // Find the full group object from the groups array
+                    const selectedGroup = groups.find(g => g.id === selection.value);
+                    this.setState({ selectedGroup });
                 }}
               />
             </div>
 
             <div className="col-sm-1">
-              <button type="button" className="btn btn-default" onClick={ this.saveAssignment }>Save</button>
+              <button type="button" className="btn btn-default" onClick={this.saveAssignment}>Save</button>
             </div>
           </div>
-
-
         </div>
 
-        { this.renderGroupAssignments() }
-
-
+        {this.renderGroupAssignments()}
       </div>
     );
   }
