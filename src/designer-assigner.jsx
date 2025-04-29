@@ -16,7 +16,6 @@ export default class Assigner extends React.Component {
     this.selectForm = this.selectForm.bind(this);
     this.selectGroups = this.selectGroups.bind(this);
     this.saveAssignment = this.saveAssignment.bind(this);
-    this.loadForm = this.loadForm.bind(this);
   }
 
   componentDidMount() {
@@ -43,10 +42,6 @@ export default class Assigner extends React.Component {
         });
       }
     );
-  }
-
-  loadForm(formId) {
-    // Logic to load form details can be added here
   }
 
   updateAssignments(form_id, group_ids) {
