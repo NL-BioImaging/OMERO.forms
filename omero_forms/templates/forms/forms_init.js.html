@@ -2,76 +2,84 @@
 
 <script>
 $(function() {
-  var pluginIndex = {{ forloop.counter }};
   var urls = {
     base: "{% url 'omeroforms_base' %}"
   };
-
-  // Setup CSRF for all AJAX requests (needed for iframe mode)
-  $.ajaxSetup({
-    beforeSend: function(xhr, settings) {
-      if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-        xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
-      }
-    }
-  });
 
   var reactRender = function(objId, objType) {
     omeroforms.default(objId, objType.charAt(0).toUpperCase() + objType.slice(1), urls);
   };
 
-  $("#omero_forms_panel").omeroweb_center_plugin({
-    plugin_index: pluginIndex,
-    empty_on_sel_change: false,
-    load_plugin_content: function(selected, dtype, oid) {
-      var datatree = $.jstree.reference('#dataTree');
-      
-      // If datatree isn't available, try to use URL parameters (iframe mode)
-      if (!datatree) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const objId = urlParams.get('id');
-        const objType = urlParams.get('type');
+  // Check if we're in iframe mode (URL params) or center panel mode
+  const urlParams = new URLSearchParams(window.location.search);
+  const objId = urlParams.get('id');
+  const objType = urlParams.get('type');
+
+  if (objId && objType) {
+    // Iframe mode - setup CSRF and render directly
+    $.ajaxSetup({
+      beforeSend: function(xhr, settings) {
+        if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+          xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+        }
+      }
+    });
+    reactRender(objId, objType);
+  } else {
+    // Center panel mode - initialize plugin
+    $("#omero_forms_panel").omeroweb_center_plugin({
+      plugin_index: {{ forloop.counter }},
+      empty_on_sel_change: false,
+      load_plugin_content: function(selected, dtype, oid) {
+        var datatree = $.jstree.reference('#dataTree');
         
-        if (!objId || !objType) {
-          console.warn('Missing required parameters: id and type');
+        // If datatree isn't available, try to use URL parameters (iframe mode)
+        if (!datatree) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const objId = urlParams.get('id');
+          const objType = urlParams.get('type');
+          
+          if (!objId || !objType) {
+            console.warn('Missing required parameters: id and type');
+            return;
+          }
+          
+          reactRender(objId, objType);
           return;
         }
-        
-        reactRender(objId, objType);
-        return;
-      }
 
-      // Original datatree-based logic
-      var tree_selected = datatree.get_selected(true);
-      if (tree_selected === undefined) {
-        return;
-      }
-
-      var selected = tree_selected[0];
-
-      if (selected.type === 'image') {
-        selected = datatree.get_node(datatree.get_parent(selected));
-        if (selected.type === 'dataset') {
-          reactRender(selected.data.obj.id, selected.type);
+        // Original datatree-based logic
+        var tree_selected = datatree.get_selected(true);
+        if (tree_selected === undefined) {
+          return;
         }
-      }
-      else if (
-        selected.type === 'dataset'
-        || selected.type === 'project'
-        || selected.type === 'plate'
-        || selected.type === 'screen'
-      ) {
-        if (!datatree.is_loaded(selected)) {
-          datatree.load_node(selected, function(node, status) {
-            var nodeObj = datatree.get_node(node);
-            reactRender(nodeObj.data.obj.id, nodeObj.type);
-          });
-        } else {
-          reactRender(selected.data.obj.id, selected.type);
+
+        var selected = tree_selected[0];
+
+        if (selected.type === 'image') {
+          selected = datatree.get_node(datatree.get_parent(selected));
+          if (selected.type === 'dataset') {
+            reactRender(selected.data.obj.id, selected.type);
+          }
         }
-      }
-    },
-    supported_obj_types: ['image', 'dataset', 'project', 'plate', 'screen']
-  });
+        else if (
+          selected.type === 'dataset'
+          || selected.type === 'project'
+          || selected.type === 'plate'
+          || selected.type === 'screen'
+        ) {
+          if (!datatree.is_loaded(selected)) {
+            datatree.load_node(selected, function(node, status) {
+              var nodeObj = datatree.get_node(node);
+              reactRender(nodeObj.data.obj.id, nodeObj.type);
+            });
+          } else {
+            reactRender(selected.data.obj.id, selected.type);
+          }
+        }
+      },
+      supported_obj_types: ['image', 'dataset', 'project', 'plate', 'screen']
+    });
+  }
 });
 </script>
