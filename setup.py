@@ -84,9 +84,9 @@ setup(
     author=AUTHOR,
     author_email="dpwrussell@gmail.com",
     license=LICENSE,
-    url="https://github.com/Cellular-Imaging-Amsterdam-UMC/OMERO.forms",
-    download_url="%s/archive/%s.tar.gz" % ("https://github.com/Cellular-Imaging-Amsterdam-UMC/OMERO.forms", VERSION),
-    keywords=["OMERO.web", "BIOMERO", "forms", "provenance", "history"],
+    url=HOMEPAGE,
+    download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),
+    keywords=["OMERO.web", "forms", "provenance", "history"],
     install_requires=REQUIREMENTS,
     python_requires=PYTHON_REQUIRES,
     package_data={
