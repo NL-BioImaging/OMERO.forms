@@ -34,7 +34,7 @@ HOMEPAGE = "https://github.com/Cellular-Imaging-Amsterdam-UMC/OMERO.forms"
 
 REQUIREMENTS = [
     "omero-web>=5.6.0",
-    "django>=4.2,<5.0",  # Match OMERO.web and BIOMERO Django version
+    "Django>=4.2.3,<4.3",  # Match OMERO.web 5.28.0 requirements
 ]
 
 PYTHON_REQUIRES = ">=3.9"  # Match BIOMERO's Python requirement
