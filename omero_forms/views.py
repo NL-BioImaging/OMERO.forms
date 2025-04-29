@@ -93,6 +93,13 @@ def designer(request, conn=None, **kwargs):
 
 
 @login_required(setGroupContext=True)
+def forms_view(request, conn=None, **kwargs):
+    """Render the base forms template that handles both datatree and URL params"""
+    context = {}
+    return render(request, "forms/forms_init.js.html", context)
+
+
+@login_required(setGroupContext=True)
 @with_su
 def list_forms(request, conn=None, su_conn=None, form_master=None, **kwargs):
 
