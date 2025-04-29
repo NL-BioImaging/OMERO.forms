@@ -12,6 +12,7 @@
 <div id="omero_forms_panel"></div>
 {% endif %}
 
+<script src="{% static 'forms/js/bundle.js' %}"></script>
 <script>
 $(function() {
   const isIframe = {{ iframe_mode|yesno:"true,false" }};
