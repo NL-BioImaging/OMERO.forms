@@ -94,8 +94,11 @@ def designer(request, conn=None, **kwargs):
 
 @login_required(setGroupContext=True)
 def forms_view(request, conn=None, **kwargs):
-    """Render the base forms template that handles both datatree and URL params"""
-    context = {}
+    """Handles both center panel and iframe modes with a single template"""
+    context = {
+        'iframe_mode': bool(request.GET.get('id')),  # True if id param exists
+        'csrf_token': request.META["CSRF_COOKIE"],
+    }
     return render(request, "forms/forms_init.js.html", context)
 
 
