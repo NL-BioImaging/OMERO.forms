@@ -67,6 +67,4 @@ urlpatterns = [
         views.save_form_assignment,
         name="omeroforms_save_form_assignment",
     ),
-    # Iframe
-    re_path(r"^iframe/$", views.forms_iframe, name="omeroforms_iframe"),
 ]
