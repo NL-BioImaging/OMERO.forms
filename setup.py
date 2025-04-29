@@ -34,7 +34,7 @@ HOMEPAGE = "https://github.com/sorgerlab/OMERO.forms"
 
 REQUIREMENTS = [
     "omero-web>=5.6.0",
-    "django>=3.2,<4.0"
+    "Django>=4.2.3,<4.3",  # Match OMERO.web 5.28.0 requirements
 ]
 
 PYTHON_REQUIRES = ">=3.7"
