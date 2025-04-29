@@ -127,8 +127,18 @@ class CodeEditor extends React.Component {
     this.state = {
       valid: true, 
       code: props.code,
-      options: Object.assign({}, cmOptions)  // Store options in state
+      options: Object.assign({}, cmOptions)
     };
+  }
+
+  // Add this lifecycle method to handle prop updates
+  componentDidUpdate(prevProps) {
+    if (prevProps.code !== this.props.code) {
+      this.setState({ 
+        code: this.props.code,
+        valid: true 
+      });
+    }
   }
 
   onCodeChange = (editor, data, value) => {
