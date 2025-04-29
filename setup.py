@@ -87,11 +87,8 @@ setup(
     url=HOMEPAGE,
     download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),
     keywords=["OMERO.web", "forms", "provenance", "history"],
-    install_requires=[
-        'omero-web>=5.6.0',
-        'django>=3.2,<4.0',
-    ],
-    python_requires='>=3.7',
+    install_requires=REQUIREMENTS,
+    python_requires=PYTHON_REQUIRES,
     package_data={
         "omero_forms": [
             "static/forms/js/*",
