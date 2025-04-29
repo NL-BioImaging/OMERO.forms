@@ -39,7 +39,7 @@
         </div>
         <iframe 
           id="formsIframe"
-          src="/omero/forms/?id=301&type=dataset" 
+          src="{{ globalURLs.base }}?id=301&type=dataset" 
           width="100%" 
           height="600px"
           style="border: 1px solid #ddd; border-radius: 4px;">
@@ -58,7 +58,7 @@
       var type = document.getElementById('objType').value;
       var iframe = document.getElementById('formsIframe');
       
-      iframe.src = "/omero/forms/?id=" + id + "&type=" + type;
+      iframe.src = globalURLs.base + "?id=" + id + "&type=" + type;
       iframe.contentWindow.location.reload();
     }
   </script>
