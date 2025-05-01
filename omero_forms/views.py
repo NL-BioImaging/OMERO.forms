@@ -62,26 +62,50 @@ def get_priv_uid(conn):
 
 def with_su(func):
     def _decorator(request, *args, **kwargs):
-
         conn = kwargs["conn"]
 
         # Create a super user connection
         su_conn = conn.clone()
-        su_conn.setIdentity(
-            settings.OMERO_FORMS_PRIV_USER, settings.OMERO_FORMS_PRIV_PASSWORD
-        )
-        su_conn.connect()
+        try:
+            # First check if we can get the forms admin user
+            admin_user = settings.OMERO_FORMS_PRIV_USER
+            admin_pass = settings.OMERO_FORMS_PRIV_PASSWORD
+            
+            if not admin_user or not admin_pass:
+                return HttpResponseServerError(
+                    "OMERO.forms configuration error: Missing admin credentials in settings"
+                )
 
-        if not su_conn.connect():
+            su_conn.setIdentity(admin_user, admin_pass)
+            success = su_conn.connect()
+
+            if not success:
+                return HttpResponseServerError(
+                    f"OMERO.forms admin user '{admin_user}' could not connect. "
+                    "Check if user exists and password is correct. "
+                    "User must be admin and member of system group only."
+                )
+
+            # Verify user has admin privileges
+            if not su_conn.isAdmin():
+                return HttpResponseServerError(
+                    f"OMERO.forms admin user '{admin_user}' exists but lacks admin privileges"
+                )
+
+            kwargs["su_conn"] = su_conn
+            kwargs["form_master"] = get_priv_uid(conn)
+            response = func(request, *args, **kwargs)
+
+            return response
+            
+        except Exception as e:
+            logger.error(f"OMERO.forms admin connection error: {str(e)}")
             return HttpResponseServerError(
-                "OMERO.forms master form user is possibly misconfigured"
+                f"OMERO.forms admin connection error: {str(e)}"
             )
-
-        kwargs["su_conn"] = su_conn
-        kwargs["form_master"] = get_priv_uid(conn)
-        response = func(request, *args, **kwargs)
-
-        return response
+        finally:
+            if su_conn is not None:
+                su_conn.close()
 
     return wraps(func)(_decorator)
 
