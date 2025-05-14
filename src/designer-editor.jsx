@@ -206,6 +206,7 @@ export default class Editor extends React.Component {
       exists: false,
       nameEdit: false,
       urlToLoad: '', // Add this
+      urlLoadError: null, // Add this
       previousFormId: undefined,
       previousSchema: undefined,
       previousUISchema: undefined,
@@ -360,7 +361,7 @@ export default class Editor extends React.Component {
     fetch(rawUrl)
       .then(response => {
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error ${response.status}`);
         }
         return response.json();
       })
@@ -372,7 +373,8 @@ export default class Editor extends React.Component {
           schema: data,
           formId: formId,
           message: `Loaded version ${data.version || 'unknown'} from ${url}`,
-          urlToLoad: url // Store the original URL
+          urlToLoad: url, // Store the original URL
+          urlLoadError: null  // Clear any previous error
         });
 
         // Trigger form name validation
@@ -380,7 +382,9 @@ export default class Editor extends React.Component {
       })
       .catch(error => {
         console.error('Error loading schema:', error);
-        alert('Failed to load schema from URL: ' + error.message);
+        this.setState({
+          urlLoadError: `Failed to load schema: ${error.message}`
+        });
       });
   }
 
@@ -448,6 +452,7 @@ export default class Editor extends React.Component {
       exists,
       nameEdit,
       urlToLoad, // Add this
+      urlLoadError, // Add this
       previousSchema,
       previousUISchema,
       previousFormTypes
@@ -512,7 +517,7 @@ export default class Editor extends React.Component {
                   </button>
                 </div>
 
-                <div className='col-sm-4'>
+                <div className='col-sm-6'>
                   <Select
                     name='form-chooser'
                     placeholder='Load existing form...'
@@ -520,15 +525,21 @@ export default class Editor extends React.Component {
                     onChange={ this.selectForm }
                   />
                 </div>
+              </div>
 
-                <div className='col-sm-4'>
+              {/* Add new row for URL input */}
+              <div className='row' style={{ marginTop: '10px' }}>
+                <div className='col-sm-12'>
                   <div className='input-group'>
                     <input
                       type='text'
                       className='form-control'
-                      placeholder='Schema URL...'
+                      placeholder='Enter schema URL to load...'
                       value={urlToLoad || ''}
-                      onChange={(e) => this.setState({ urlToLoad: e.target.value })}
+                      onChange={(e) => this.setState({ 
+                        urlToLoad: e.target.value,
+                        urlLoadError: null
+                      })}
                     />
                     <span className='input-group-btn'>
                       <button
@@ -540,12 +551,16 @@ export default class Editor extends React.Component {
                           }
                         }}
                       >
-                        Load URL
+                        Load from URL
                       </button>
                     </span>
                   </div>
+                  {urlLoadError && (
+                    <div className='alert alert-danger form-small-alert'>
+                      <strong>{urlLoadError}</strong>
+                    </div>
+                  )}
                 </div>
-
               </div>
 
               <div className='row'>
