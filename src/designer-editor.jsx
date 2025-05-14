@@ -533,7 +533,10 @@ export default class Editor extends React.Component {
                     placeholder='Load existing form...'
                     options={ options }
                     onChange={ this.selectForm }
-                    classNamePrefix="Select"  // Add this to make it use Select-* classes
+                    styles={{
+                      // Fixes the overlapping problem of the component
+                      menu: provided => ({ ...provided, zIndex: 9999 })
+                    }}
                   />
                 </div>
               </div>
