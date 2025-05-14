@@ -20,6 +20,13 @@ const convertGitHubUrl = (url) => {
   return url;
 };
 
+// Add helper to extract URL from message
+const extractUrlFromMessage = (message) => {
+  if (!message) return '';
+  const match = message.match(/from (https:\/\/[^\s]+)$/);
+  return match ? match[1] : '';
+};
+
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
 CodeMirror.prototype.componentWillReceiveProps = function (nextProps) {
@@ -237,31 +244,33 @@ export default class Editor extends React.Component {
       }
     );
 
-    fetch(
-      formRequest
-    ).then(
-      response => response.json()
-    ).then(
-      jsonData => {
-        const form = jsonData.form;
-        const schema = JSON.parse(form.schema);
-        const uiSchema = JSON.parse(form.uiSchema);
-        this.setState({
-          timestamp: form.timestamp,
-          schema,
-          uiSchema,
-          formData: {},
-          formTypes: form.objTypes,
-          editable: form.editable,
-          owners: form.owners,
-          exists: true,
-          previousFormId: form.id,
-          previousSchema: schema,
-          previousUISchema: uiSchema,
-          previousFormTypes: form.objTypes
+    fetch(formRequest)
+        .then(response => response.json())
+        .then(jsonData => {
+            const form = jsonData.form;
+            const schema = JSON.parse(form.schema);
+            const uiSchema = JSON.parse(form.uiSchema);
+            
+            // Extract URL from message if it exists
+            const urlToLoad = extractUrlFromMessage(form.message);
+            
+            this.setState({
+                timestamp: form.timestamp,
+                schema,
+                uiSchema,
+                formData: {},
+                formTypes: form.objTypes,
+                editable: form.editable,
+                owners: form.owners,
+                exists: true,
+                previousFormId: form.id,
+                previousSchema: schema,
+                previousUISchema: uiSchema,
+                previousFormTypes: form.objTypes,
+                urlToLoad,  // Set URL field based on message
+                urlLoadError: null  // Clear any previous errors
+            });
         });
-      }
-    );
   }
 
   selectForm(selection) {
@@ -272,7 +281,8 @@ export default class Editor extends React.Component {
             message: '',
             schema: defaultData.schema,
             uiSchema: defaultData.uiSchema,
-            formTypes: []
+            formTypes: [],
+            urlToLoad: ''  // Clear URL field when resetting
         });
         return;
     }
@@ -523,6 +533,7 @@ export default class Editor extends React.Component {
                     placeholder='Load existing form...'
                     options={ options }
                     onChange={ this.selectForm }
+                    classNamePrefix="Select"  // Add this to make it use Select-* classes
                   />
                 </div>
               </div>
