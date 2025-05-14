@@ -121,6 +121,68 @@ class NameModal extends React.Component {
   }
 }
 
+// Add this component after NameModal
+class URLModal extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { url: '' };
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleChange(e) {
+    this.setState({ url: e.target.value });
+  }
+
+  handleSubmit(e) {
+    e.preventDefault();
+    const { onLoad } = this.props;
+    const url = this.state.url.trim();
+    
+    // Convert github URL to raw if needed
+    let rawUrl = url;
+    if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
+      rawUrl = url.replace('github.com', 'raw.githubusercontent.com')
+                  .replace('/blob/', '/');
+    }
+    
+    onLoad(rawUrl);
+  }
+
+  render() {
+    const { url } = this.state;
+    const { show, toggle } = this.props;
+    return (
+      <Modal show={show} onHide={toggle}>
+        <form onSubmit={this.handleSubmit}>
+          <Modal.Header closeButton>
+            <Modal.Title>Load Schema from URL</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <FormGroup controlId="formUrlText">
+              <BootstrapForm.Label>Schema URL</BootstrapForm.Label>
+              <FormControl
+                type="text"
+                value={url}
+                placeholder="Enter URL to JSON Schema..."
+                onChange={this.handleChange}
+              />
+              <FormControl.Feedback />
+              <BootstrapForm.Text>
+                Enter a URL to a JSON Schema file. GitHub URLs will be converted to raw format automatically.
+              </BootstrapForm.Text>
+            </FormGroup>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button type="submit">Load</Button>
+            <Button onClick={toggle}>Close</Button>
+          </Modal.Footer>
+        </form>
+      </Modal>
+    );
+  }
+}
+
 class CodeEditor extends React.Component {
   constructor(props) {
     super(props);
@@ -196,6 +258,7 @@ export default class Editor extends React.Component {
       owners: [],
       exists: false,
       nameEdit: false,
+      urlEdit: false, // Add this
       previousFormId: undefined,
       previousSchema: undefined,
       previousUISchema: undefined,
@@ -209,6 +272,8 @@ export default class Editor extends React.Component {
     this.changeFormName = this.changeFormName.bind(this);
     this.updateName = this.updateName.bind(this);
     this.updateMessage = this.updateMessage.bind(this);
+    this.toggleUrlModal = this.toggleUrlModal.bind(this); // Add this
+    this.loadFromUrl = this.loadFromUrl.bind(this); // Add this
 
   }
 
@@ -343,6 +408,31 @@ export default class Editor extends React.Component {
 
   }
 
+  toggleUrlModal(e) {
+    if (e) {
+      e.preventDefault();
+    }
+    this.setState({ urlEdit: !this.state.urlEdit });
+  }
+
+  loadFromUrl(url) {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        // Update form with loaded schema
+        this.setState({
+          schema: data,
+          formId: data.title || '',
+          message: `Loaded version: ${data.version || 'unknown'}`,
+          urlEdit: false
+        });
+      })
+      .catch(error => {
+        console.error('Error loading schema:', error);
+        alert('Failed to load schema from URL');
+      });
+  }
+
   changeFormName(name) {
     this.setState({
       formId: name
@@ -406,6 +496,7 @@ export default class Editor extends React.Component {
       editable,
       exists,
       nameEdit,
+      urlEdit, // Add this
       previousSchema,
       previousUISchema,
       previousFormTypes
@@ -466,17 +557,27 @@ export default class Editor extends React.Component {
                     disabled={ !formId || !unsaved || !editable }
                   >
                     Save
-                    { unsaved && <span class="badge">*</span> }
+                    { unsaved && <span className="badge">*</span> }
                   </button>
                 </div>
 
-                <div className='col-sm-4 col-sm-offset-2'>
+                <div className='col-sm-4'>
                   <Select
                     name='form-chooser'
                     placeholder='Load existing form...'
                     options={ options }
                     onChange={ this.selectForm }
                   />
+                </div>
+
+                <div className='col-sm-2'>
+                  <button
+                    type='button'
+                    className='btn btn-info'
+                    onClick={ this.toggleUrlModal }
+                  >
+                    Load from URL
+                  </button>
                 </div>
 
               </div>
@@ -565,6 +666,12 @@ export default class Editor extends React.Component {
           show={ nameEdit }
           toggle={ this.toggleNameModal }
           onChange={ this.changeFormName }
+        />
+
+        <URLModal
+          show={this.state.urlEdit}
+          toggle={this.toggleUrlModal}
+          onLoad={this.loadFromUrl}
         />
 
       </div>
