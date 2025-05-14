@@ -378,13 +378,19 @@ export default class Editor extends React.Component {
       .then(data => {
         const formId = data.title || '';
         
-        // Update form with loaded schema
-        this.setState({
-          schema: data,
-          formId: formId,
-          message: `Loaded version ${data.version || 'unknown'} from ${url}`,
-          urlToLoad: url, // Store the original URL
-          urlLoadError: null  // Clear any previous error
+        // Update the state but preserve message if schema hasn't changed
+        this.setState(prevState => {
+          const isSchemaChanged = JSON.stringify(data) !== JSON.stringify(prevState.previousSchema);
+          
+          return {
+            schema: data,
+            formId: formId,
+            message: isSchemaChanged ? 
+              `Loaded version ${data.version || 'unknown'} from ${url}` : 
+              prevState.message,
+            urlToLoad: url,
+            urlLoadError: null
+          };
         });
 
         // Trigger form name validation
