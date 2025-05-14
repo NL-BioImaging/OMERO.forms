@@ -11,6 +11,15 @@ import validator from '@rjsf/validator-ajv8';  // Add this import
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
 
+// Add this helper function at the top with other utility functions
+const convertGitHubUrl = (url) => {
+  if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
+    return url.replace('github.com', 'raw.githubusercontent.com')
+               .replace('/blob/', '/');
+  }
+  return url;
+};
+
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
 CodeMirror.prototype.componentWillReceiveProps = function (nextProps) {
@@ -211,7 +220,7 @@ export default class Editor extends React.Component {
     this.updateName = this.updateName.bind(this);
     this.updateMessage = this.updateMessage.bind(this);
     this.loadFromUrl = this.loadFromUrl.bind(this); // Add this
-
+    this.validateFormName = this.validateFormName.bind(this); // Add this
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -346,19 +355,61 @@ export default class Editor extends React.Component {
   }
 
   loadFromUrl(url) {
-    fetch(url)
-      .then(response => response.json())
+    const rawUrl = convertGitHubUrl(url);
+    
+    fetch(rawUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        const formId = data.title || '';
+        
         // Update form with loaded schema
         this.setState({
           schema: data,
-          formId: data.title || '',
-          message: `Loaded version: ${data.version || 'unknown'}`,
+          formId: formId,
+          message: `Loaded version ${data.version || 'unknown'} from ${url}`,
+          urlToLoad: url // Store the original URL
         });
+
+        // Trigger form name validation
+        this.validateFormName(formId);
       })
       .catch(error => {
         console.error('Error loading schema:', error);
-        alert('Failed to load schema from URL');
+        alert('Failed to load schema from URL: ' + error.message);
+      });
+  }
+
+  validateFormName(name) {
+    const { urls } = this.props;
+
+    if (!name || name.length === 0) {
+      this.setState({
+        editable: true,
+        exists: false
+      });
+      return;
+    }
+
+    const request = new Request(
+      `${urls.base}get_formid_editable/${name}`,
+      {
+        credentials: 'same-origin'
+      }
+    );
+
+    fetch(request)
+      .then(response => response.json())
+      .then(jsonData => {
+        this.setState({
+          editable: jsonData.editable,
+          owners: jsonData.owners,
+          exists: jsonData.exists
+        });
       });
   }
 
@@ -369,40 +420,11 @@ export default class Editor extends React.Component {
   }
 
   updateName(e) {
-    const { urls } = this.props;
     const name = e.target.value;
     this.setState({
       formId: name
     });
-
-    if (!name || name.length === 0) {
-      this.setState({
-        editable: true
-      });
-      return;
-    }
-
-    const request = new Request(
-      `${urls.base}get_formid_editable/${ name }`,
-      {
-        credentials: 'same-origin'
-      }
-    );
-
-    fetch(
-      request
-    ).then(
-      response => response.json()
-    ).then(
-      jsonData => {
-        this.setState({
-          editable: jsonData.editable,
-          owners: jsonData.owners,
-          exists: jsonData.exists
-        });
-      }
-    );
-
+    this.validateFormName(name);
   }
 
   updateMessage(e) {
