@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Select from 'react-select';
-import Form from "react-jsonschema-form";
+import Form from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';  // Add this import
 
 const padDate = v => {
   return v < 10 ? '0' + v : v
@@ -106,6 +107,7 @@ export default class History extends React.Component {
           schema={ JSON.parse(version.schema) }
           uiSchema={ JSON.parse(version.uiSchema) }
           formData={ JSON.parse(data.formData) }
+          validator={validator}  // Add the validator prop
           onSubmit={ this.submitForm }
         >
           <button type="button" className="btn btn-primary disabled">Submit</button>

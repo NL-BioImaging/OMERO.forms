@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Select from 'react-select';
-import Form from "react-jsonschema-form";
+import Form from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';
 
 function compareFormData(d1, d2) {
   // No previous data
@@ -174,6 +175,7 @@ export default class Forms extends React.Component {
             schema={ schema }
             uiSchema={ uiSchema }
             formData={ data }
+            validator={ validator }
             onSubmit={ this.submitForm }
             onChange={ this.onFormDataChange }
             liveValidate={ true }

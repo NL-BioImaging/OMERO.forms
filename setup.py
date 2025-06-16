@@ -32,7 +32,12 @@ AUTHOR = "D.P.W. Russell"
 LICENSE = "AGPL-3.0"
 HOMEPAGE = "https://github.com/sorgerlab/OMERO.forms"
 
-REQUIREMENTS = ["omero-web>=5.6.0"]
+REQUIREMENTS = [
+    "omero-web>=5.6.0",
+    "Django>=4.2.3,<4.3",  # Match OMERO.web 5.28.0 requirements
+]
+
+PYTHON_REQUIRES = ">=3.7"
 
 
 def require_npm(command, strict=False):
@@ -54,7 +59,7 @@ def require_npm(command, strict=False):
 
 setup(
     name="omero-forms",
-    packages=find_packages(exclude=["ez_setup"]),
+    packages=find_packages(),
     version=VERSION,
     description=DESCRIPTION,
     long_description=read_file("README.rst"),
@@ -83,7 +88,16 @@ setup(
     download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),
     keywords=["OMERO.web", "forms", "provenance", "history"],
     install_requires=REQUIREMENTS,
-    python_requires="~=3.5",
+    python_requires=PYTHON_REQUIRES,
+    package_data={
+        "omero_forms": [
+            "static/forms/js/*",
+            "static/forms/js/*.js",
+            "templates/forms/*",
+            "templates/forms/*.html",
+            "templates/*/*",
+        ],
+    },
     include_package_data=True,
     zip_safe=False,
     cmdclass={

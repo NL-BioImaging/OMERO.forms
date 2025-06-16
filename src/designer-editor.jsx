@@ -1,27 +1,34 @@
 import React from 'react';
-import Codemirror from 'react-codemirror';
-import Select from 'react-select';
+import { Controlled as CodeMirror } from 'react-codemirror2';
 import 'codemirror/mode/javascript/javascript';
-import { shouldRender } from 'react-jsonschema-form/lib/utils';
+import 'codemirror/lib/codemirror.css';
+import Select from 'react-select';
+import { shouldRender } from "@rjsf/utils";
 import defaultData from './designer-default';
 const samples = {};
-import Form from 'react-jsonschema-form';
-import { Modal, Button, FormGroup, FormControl, ControlLabel, HelpBlock, Checkbox } from 'react-bootstrap'
+import Form from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';  // Add this import
+import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
+import { Form as BootstrapForm } from 'react-bootstrap';
 
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
-Codemirror.prototype.componentWillReceiveProps = function (nextProps) {
-  if (this.codeMirror &&
-      nextProps.value !== undefined &&
+CodeMirror.prototype.componentWillReceiveProps = function (nextProps) {
+  if (!this.codeMirror) {
+    return; // Early return if codeMirror instance doesn't exist yet
+  }
+
+  if (nextProps.value !== undefined && 
       this.codeMirror.getValue() != nextProps.value) {
     this.codeMirror.setValue(nextProps.value);
   }
-  if (typeof nextProps.options === 'object') {
-    for (var optionName in nextProps.options) {
-      if (nextProps.options.hasOwnProperty(optionName)) {
+
+  if (typeof nextProps.options === 'object' && nextProps.options) {
+    Object.keys(nextProps.options).forEach(optionName => {
+      if (this.codeMirror && this.codeMirror.setOption) {
         this.codeMirror.setOption(optionName, nextProps.options[optionName]);
       }
-    }
+    });
   }
 };
 
@@ -93,7 +100,7 @@ class NameModal extends React.Component {
               <FormGroup
                 controlId="formNameText"
               >
-                <ControlLabel>Form Name</ControlLabel>
+                <BootstrapForm.Label>Form Name</BootstrapForm.Label>
                 <FormControl
                   type="text"
                   value={ name }
@@ -101,7 +108,7 @@ class NameModal extends React.Component {
                   onChange={ this.handleChange }
                 />
                 <FormControl.Feedback />
-                <HelpBlock>This must be a unique string within the context of the OMERO instance. Forms can be overwritten by the original creator or an admin.</HelpBlock>
+                <BootstrapForm.Text>This must be a unique string within the context of the OMERO instance. Forms can be overwritten by the original creator or an admin.</BootstrapForm.Text>
               </FormGroup>
           </Modal.Body>
           <Modal.Footer>
@@ -117,48 +124,58 @@ class NameModal extends React.Component {
 class CodeEditor extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {valid: true, code: props.code};
+    this.state = {
+      valid: true, 
+      code: props.code,
+      options: Object.assign({}, cmOptions)
+    };
   }
 
-  componentWillReceiveProps(props) {
-    this.setState({valid: true, code: props.code});
+  // Add this lifecycle method to handle prop updates
+  componentDidUpdate(prevProps) {
+    if (prevProps.code !== this.props.code) {
+      this.setState({ 
+        code: this.props.code,
+        valid: true 
+      });
+    }
   }
 
-  shouldComponentUpdate(nextProps, nextState) {
-    return shouldRender(this, nextProps, nextState);
-  }
-
-  onCodeChange = (code) => {
-    this.setState({valid: true, code});
-    setImmediate(() => {
-      try {
-        this.props.onChange(fromJson(this.state.code));
-      } catch(err) {
-        console.error(err);
-        this.setState({valid: false, code});
-      }
-    });
+  onCodeChange = (editor, data, value) => {
+    this.setState({ valid: true, code: value });
+    try {
+      const parsed = fromJson(value);
+      this.props.onChange(parsed);
+    } catch(err) {
+      console.error(err);
+      this.setState({ valid: false });
+    }
   };
 
   render() {
     const { title } = this.props;
-    const icon = this.state.valid ? 'ok' : 'remove';
-    const cls = this.state.valid ? 'valid' : 'invalid';
+    const { code, options, valid } = this.state;
+    const icon = valid ? 'ok' : 'remove';
+    const cls = valid ? 'valid' : 'invalid';
+
     return (
       <div className='panel panel-default'>
         <div className='panel-heading'>
           <span className={`${cls} glyphicon glyphicon-${icon}`} />
           {' ' + title}
         </div>
-        <Codemirror
-          value={this.state.code}
+        <CodeMirror
+          value={code}
+          options={options}
+          onBeforeChange={(editor, data, value) => {
+            this.setState({ code: value });
+          }}
           onChange={this.onCodeChange}
-          options={Object.assign({}, cmOptions)} />
+        />
       </div>
     );
   }
 }
-
 
 export default class Editor extends React.Component {
   constructor(props) {
@@ -236,19 +253,36 @@ export default class Editor extends React.Component {
   }
 
   selectForm(selection) {
-    const { forms } = this.props;
-    if (selection && selection.value) {
-      this.setState({
+    // Early return if nothing selected
+    if (!selection) {
+        this.setState({
+            formId: '',
+            message: '',
+            schema: defaultData.schema,
+            uiSchema: defaultData.uiSchema,
+            formTypes: []
+        });
+        return;
+    }
+
+    // Load selected form
+    this.setState({
         formId: selection.value,
         message: ''
-      });
-      this.loadForm(selection.value);
-    }
+    });
+    this.loadForm(selection.value);
   }
 
   selectTypes(selection) {
+    // Handle null/undefined selection
+    if (!selection) {
+      this.setState({ formTypes: [] });
+      return;
+    }
+    // Convert single selection to array if needed
+    const selections = Array.isArray(selection) ? selection : [selection];
     this.setState({
-      formTypes: selection.map(s => s.value)
+      formTypes: selections.map(s => s.value)
     });
   }
 
@@ -454,7 +488,7 @@ export default class Editor extends React.Component {
                 </div>
 
                 <div className='col-sm-2'>
-                  <Checkbox onChange={ this.setLiveValidate } checked={ liveValidate }>Live Validation</Checkbox>
+                  <BootstrapForm.Check onChange={ this.setLiveValidate } checked={ liveValidate }>Live Validation</BootstrapForm.Check>
                 </div>
 
               </div>
@@ -469,10 +503,10 @@ export default class Editor extends React.Component {
                     <Select
                       name='type-chooser'
                       placeholder='Select applicable types...'
-                      multi={ true }
-                      options={ typeOptions }
-                      value={ formTypes }
-                      onChange={ this.selectTypes }
+                      isMulti={true}
+                      options={typeOptions}
+                      value={formTypes.map(type => ({ value: type, label: type }))}
+                      onChange={this.selectTypes}
                       id='objTypes'
                     />
                   </div>
@@ -518,6 +552,7 @@ export default class Editor extends React.Component {
           <Form
             liveValidate={liveValidate}
             schema={schema}
+            validator={validator}
             uiSchema={uiSchema}
             formData={formData}
             onChange={this.onFormDataChange}

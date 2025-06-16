@@ -289,7 +289,6 @@ def get_formid_editable(
 @with_su
 @csrf_exempt
 def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
-    pass
     # TODO This needs updating to new layout
 
     if request.method != "POST":

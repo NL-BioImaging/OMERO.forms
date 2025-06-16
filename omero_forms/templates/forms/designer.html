@@ -7,6 +7,7 @@
   <title>OMERO.forms Designer</title>
 
   <link rel="stylesheet" id="theme" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
 
   <!-- <script src="//cdn.polyfill.io/v2/polyfill.min.js"></script> -->
 </head>
@@ -17,6 +18,8 @@
       base: "{% url 'omeroforms_base' %}"
     };
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
   <script src="{% static "forms/js/designer.js" %}"></script>
 </body>
 </html>

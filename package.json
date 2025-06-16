@@ -1,35 +1,55 @@
 {
   "name": "omero-forms",
   "version": "1.1.0",
-  "description": "",
+  "description": "OMERO forms app for enhanced metadata input and provenance",
   "main": "bundle.js",
+  "babel": {
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+    ]
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/webpack/bin/webpack.js --progress"
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development",
+    "watch": "webpack --mode development --watch"
   },
   "author": "Douglas P.W. Russell",
   "license": "MIT",
+  "dependencies": {
+    "@rjsf/core": "^5.13.8",
+    "@rjsf/utils": "^5.13.8",
+    "@rjsf/validator-ajv8": "^5.13.8",
+    "codemirror": "^5.65.16",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.10.1",
+    "react-codemirror2": "^7.3.0",
+    "react-dom": "^18.2.0",
+    "react-select": "^5.8.0",
+    "react-tooltip": "^5.25.0",
+    "whatwg-fetch": "^3.6.19"
+  },
   "devDependencies": {
-    "babel-core": "^6.4.5",
-    "babel-loader": "^6.2.2",
-    "babel-plugin-transform-runtime": "^6.8.0",
-    "babel-polyfill": "^6.5.0",
-    "babel-preset-es2015": "^6.3.13",
-    "babel-preset-react": "^6.3.13",
-    "babel-preset-stage-2": "^6.13.0",
-    "babel-runtime": "^6.5.0",
-    "css-loader": "^0.23.1",
-    "file-loader": "^0.8.5",
-    "react": "^15.1.0",
-    "react-bootstrap": "^0.30.5",
-    "react-codemirror": "^0.2.6",
-    "react-dom": "^15.1.0",
-    "react-jsonschema-form": "^0.33.2",
-    "react-select": "^1.0.0-rc",
-    "react-tooltip": "^2.0.3",
-    "style-loader": "^0.13.0",
-    "url-loader": "^0.5.7",
-    "webpack": "^1.12.13",
-    "whatwg-fetch": "^1.0.0"
-  }
+    "@babel/core": "^7.23.7",
+    "@babel/preset-env": "^7.23.7",
+    "@babel/preset-react": "^7.23.7",
+    "@babel/plugin-transform-runtime": "^7.23.7",
+    "@babel/runtime": "^7.23.7",
+    "babel-loader": "^9.1.3",
+    "css-loader": "^6.8.1",
+    "style-loader": "^3.3.3",
+    "file-loader": "^6.2.0",
+    "url-loader": "^4.1.1",
+    "@svgr/webpack": "^8.1.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "terser-webpack-plugin": "^5.3.10",
+    "postcss": "^8.4.35",
+    "postcss-loader": "^8.1.1",
+    "autoprefixer": "^10.4.17",
+    "sass": "^1.70.0",
+    "sass-loader": "^14.1.0"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
