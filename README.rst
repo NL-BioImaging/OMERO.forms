@@ -77,18 +77,13 @@ The list of changes in reverse chronological order are presented on the left alo
 Installation
 ============
 
-This fork of OMERO.forms is published as `biomero-forms` on PyPI.
-
-::
-
-    pip install biomero-forms
-
 Before configuring the plugin, create an administrative user in OMERO. In this example that user is called 'formmaster'. This user should not be a member of any groups other than the 'system' group that all administrators are a part of. Give this user a secure password. This can be done with the CLI.
 
 ::
 
   omero user add formmaster form master system
 
+Alternatively, add a startup script to the OMERO.server configuration to create this user automatically on startup. 
 
 Perform the installation steps
 
@@ -151,4 +146,4 @@ The package can then be installed via pip:
 
 ::
 
-    pip install biomero-forms
+    pip install omero-forms
