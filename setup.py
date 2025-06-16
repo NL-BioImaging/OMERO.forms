@@ -28,9 +28,9 @@ def read_version():
 
 VERSION = read_version()
 DESCRIPTION = "OMERO forms app for enhanced metadata input and provenance"
-AUTHOR = "D.P.W. Russell"
+AUTHOR = "D.P.W. Russell, mmongy, T.T. Luik"
 LICENSE = "AGPL-3.0"
-HOMEPAGE = "https://github.com/sorgerlab/OMERO.forms"
+HOMEPAGE = "https://github.com/NL-BioImaging/OMERO.forms"
 
 REQUIREMENTS = [
     "omero-web>=5.6.0",
@@ -50,7 +50,7 @@ def require_npm(command, strict=False):
             if strict or not os.path.isdir(
                 "omero_forms/static/forms/js"
             ):
-                self.spawn(["npm", "install"])
+                self.spawn(["npm", "install", "--legacy-peer-deps"])
                 self.spawn(["npm", "run", "build"])
             command.run(self)
 
@@ -63,13 +63,13 @@ setup(
     version=VERSION,
     description=DESCRIPTION,
     long_description=read_file("README.rst"),
+    long_description_content_type="text/x-rst",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Framework :: Django",
         "Intended Audience :: End Users/Desktop",
         "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: GNU Affero General Public License v3",
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: JavaScript",
@@ -82,7 +82,7 @@ setup(
         "Topic :: Text Processing :: Markup :: HTML",
     ],
     author=AUTHOR,
-    author_email="dpwrussell@gmail.com",
+    author_email="cellularimaging@amsterdamumc.nl",
     license=LICENSE,
     url=HOMEPAGE,
     download_url="%s/archive/%s.tar.gz" % (HOMEPAGE, VERSION),

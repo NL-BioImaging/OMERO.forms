@@ -83,6 +83,7 @@ Before configuring the plugin, create an administrative user in OMERO. In this e
 
   omero user add formmaster form master system
 
+Alternatively, add a startup script to the OMERO.server configuration to create this user automatically on startup. 
 
 Perform the installation steps
 
@@ -108,28 +109,41 @@ Perform the installation steps
 Contributing
 ================
 
-OMERO.forms uses node and webpack.
+OMERO.forms uses Node.js and webpack for frontend builds. The package is distributed via PyPI.
 
 Building for production
 =======================
 
-This will build `static/forms/js/bundle.js` which contains basically the whole
-project including CSS. It is minified.
+This will build `static/forms/js/bundle.js` which contains the minified frontend code including CSS:
 
 ::
 
-  npm install
-  node_modules/webpack/bin/webpack.js -p
-
+    npm install --force
+    node_modules/.bin/webpack --mode production
 
 Building for development
 ========================
 
 This will detect changes and rebuild `static/forms/js/bundle.js` when there
 are any. This works in conjunction with django development server as that
-will be monitoring `bundle.js` for any changes.
+will be monitoring `bundle.js` for any changes:
 
 ::
 
-  npm install
-  node_modules/webpack/bin/webpack.js --watch
+    npm install --force
+    node_modules/.bin/webpack --watch --mode development
+
+Publishing Releases
+===================
+
+1. Create a new release on GitHub
+2. The GitHub Action will automatically:
+   - Build the frontend assets
+   - Create a Python package
+   - Publish to PyPI
+
+The package can then be installed via pip:
+
+::
+
+    pip install omero-forms
