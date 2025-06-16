@@ -50,7 +50,7 @@ def require_npm(command, strict=False):
             if strict or not os.path.isdir(
                 "omero_forms/static/forms/js"
             ):
-                self.spawn(["npm", "install"])
+                self.spawn(["npm", "install", "--legacy-peer-deps"])
                 self.spawn(["npm", "run", "build"])
             command.run(self)
 
