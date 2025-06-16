@@ -7,11 +7,11 @@ import { shouldRender } from "@rjsf/utils";
 import defaultData from './designer-default';
 const samples = {};
 import Form from '@rjsf/core';
-import validator from '@rjsf/validator-ajv8';  // Add this import
+import validator from '@rjsf/validator-ajv8';
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
 
-// Add this helper function at the top with other utility functions
+// Helper function to convert GitHub URLs to raw content URLs
 const convertGitHubUrl = (url) => {
   if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
     return url.replace('github.com', 'raw.githubusercontent.com')
@@ -20,7 +20,7 @@ const convertGitHubUrl = (url) => {
   return url;
 };
 
-// Add helper to extract URL from message
+// Helper function to extract URL from a message
 const extractUrlFromMessage = (message) => {
   if (!message) return '';
   const match = message.match(/from (https:\/\/[^\s]+)$/);
@@ -147,7 +147,7 @@ class CodeEditor extends React.Component {
     };
   }
 
-  // Add this lifecycle method to handle prop updates
+  // Ensure the component updates when props change
   componentDidUpdate(prevProps) {
     if (prevProps.code !== this.props.code) {
       this.setState({ 
@@ -212,8 +212,8 @@ export default class Editor extends React.Component {
       owners: [],
       exists: false,
       nameEdit: false,
-      urlToLoad: '', // Add this
-      urlLoadError: null, // Add this
+      urlToLoad: '', 
+      urlLoadError: null,
       previousFormId: undefined,
       previousSchema: undefined,
       previousUISchema: undefined,
@@ -227,8 +227,8 @@ export default class Editor extends React.Component {
     this.changeFormName = this.changeFormName.bind(this);
     this.updateName = this.updateName.bind(this);
     this.updateMessage = this.updateMessage.bind(this);
-    this.loadFromUrl = this.loadFromUrl.bind(this); // Add this
-    this.validateFormName = this.validateFormName.bind(this); // Add this
+    this.loadFromUrl = this.loadFromUrl.bind(this);
+    this.validateFormName = this.validateFormName.bind(this);
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -467,8 +467,8 @@ export default class Editor extends React.Component {
       editable,
       exists,
       nameEdit,
-      urlToLoad, // Add this
-      urlLoadError, // Add this
+      urlToLoad,
+      urlLoadError,
       previousSchema,
       previousUISchema,
       previousFormTypes
