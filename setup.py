@@ -63,6 +63,7 @@ setup(
     version=VERSION,
     description=DESCRIPTION,
     long_description=read_file("README.rst"),
+    long_description_content_type="text/x-rst",  # Add this line
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",

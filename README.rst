@@ -139,7 +139,7 @@ will be monitoring `bundle.js` for any changes:
     node_modules/.bin/webpack --watch --mode development
 
 Publishing Releases
-=================
+===================
 
 1. Create a new release on GitHub
 2. The GitHub Action will automatically:

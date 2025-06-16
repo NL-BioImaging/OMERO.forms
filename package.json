@@ -1,5 +1,5 @@
 {
-  "name": "biomero-forms",
+  "name": "omero-forms",
   "version": "2.0.0",
   "description": "OMERO forms app for enhanced metadata input and provenance",
   "main": "bundle.js",
