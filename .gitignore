@@ -10,3 +10,10 @@ node_modules
 build
 omero.cfg
 omero_su.cfg
+*/_version.py
+omero_forms/static/*
+
+# Node dependencies and lock files
+node_modules/
+yarn.lock
+package-lock.json
