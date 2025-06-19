@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import Form from '@rjsf/core';
-import validator from '@rjsf/validator-ajv8';  // Add this import
+import validator from '@rjsf/validator-ajv8';
 
 const padDate = v => {
   return v < 10 ? '0' + v : v

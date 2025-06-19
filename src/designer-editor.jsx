@@ -7,9 +7,25 @@ import { shouldRender } from "@rjsf/utils";
 import defaultData from './designer-default';
 const samples = {};
 import Form from '@rjsf/core';
-import validator from '@rjsf/validator-ajv8';  // Add this import
+import validator from '@rjsf/validator-ajv8';
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
+
+// Helper function to convert GitHub URLs to raw content URLs
+const convertGitHubUrl = (url) => {
+  if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
+    return url.replace('github.com', 'raw.githubusercontent.com')
+               .replace('/blob/', '/');
+  }
+  return url;
+};
+
+// Helper function to extract URL from a message
+const extractUrlFromMessage = (message) => {
+  if (!message) return '';
+  const match = message.match(/from (https:\/\/[^\s]+)$/);
+  return match ? match[1] : '';
+};
 
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
@@ -131,7 +147,7 @@ class CodeEditor extends React.Component {
     };
   }
 
-  // Add this lifecycle method to handle prop updates
+  // Ensure the component updates when props change
   componentDidUpdate(prevProps) {
     if (prevProps.code !== this.props.code) {
       this.setState({ 
@@ -196,6 +212,8 @@ export default class Editor extends React.Component {
       owners: [],
       exists: false,
       nameEdit: false,
+      urlToLoad: '', 
+      urlLoadError: null,
       previousFormId: undefined,
       previousSchema: undefined,
       previousUISchema: undefined,
@@ -209,7 +227,8 @@ export default class Editor extends React.Component {
     this.changeFormName = this.changeFormName.bind(this);
     this.updateName = this.updateName.bind(this);
     this.updateMessage = this.updateMessage.bind(this);
-
+    this.loadFromUrl = this.loadFromUrl.bind(this);
+    this.validateFormName = this.validateFormName.bind(this);
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -225,31 +244,33 @@ export default class Editor extends React.Component {
       }
     );
 
-    fetch(
-      formRequest
-    ).then(
-      response => response.json()
-    ).then(
-      jsonData => {
-        const form = jsonData.form;
-        const schema = JSON.parse(form.schema);
-        const uiSchema = JSON.parse(form.uiSchema);
-        this.setState({
-          timestamp: form.timestamp,
-          schema,
-          uiSchema,
-          formData: {},
-          formTypes: form.objTypes,
-          editable: form.editable,
-          owners: form.owners,
-          exists: true,
-          previousFormId: form.id,
-          previousSchema: schema,
-          previousUISchema: uiSchema,
-          previousFormTypes: form.objTypes
+    fetch(formRequest)
+        .then(response => response.json())
+        .then(jsonData => {
+            const form = jsonData.form;
+            const schema = JSON.parse(form.schema);
+            const uiSchema = JSON.parse(form.uiSchema);
+            
+            // Extract URL from message if it exists
+            const urlToLoad = extractUrlFromMessage(form.message);
+            
+            this.setState({
+                timestamp: form.timestamp,
+                schema,
+                uiSchema,
+                formData: {},
+                formTypes: form.objTypes,
+                editable: form.editable,
+                owners: form.owners,
+                exists: true,
+                previousFormId: form.id,
+                previousSchema: schema,
+                previousUISchema: uiSchema,
+                previousFormTypes: form.objTypes,
+                urlToLoad,  // Set URL field based on message
+                urlLoadError: null  // Clear any previous errors
+            });
         });
-      }
-    );
   }
 
   selectForm(selection) {
@@ -260,7 +281,8 @@ export default class Editor extends React.Component {
             message: '',
             schema: defaultData.schema,
             uiSchema: defaultData.uiSchema,
-            formTypes: []
+            formTypes: [],
+            urlToLoad: ''  // Clear URL field when resetting
         });
         return;
     }
@@ -343,6 +365,74 @@ export default class Editor extends React.Component {
 
   }
 
+  loadFromUrl(url) {
+    const rawUrl = convertGitHubUrl(url);
+    
+    fetch(rawUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const formId = data.title || '';
+        
+        // Update the state but preserve message if schema hasn't changed
+        this.setState(prevState => {
+          const isSchemaChanged = JSON.stringify(data) !== JSON.stringify(prevState.previousSchema);
+          
+          return {
+            schema: data,
+            formId: formId,
+            message: isSchemaChanged ? 
+              `Loaded version ${data.version || 'unknown'} from ${url}` : 
+              prevState.message,
+            urlToLoad: url,
+            urlLoadError: null
+          };
+        });
+
+        // Trigger form name validation
+        this.validateFormName(formId);
+      })
+      .catch(error => {
+        console.error('Error loading schema:', error);
+        this.setState({
+          urlLoadError: `Failed to load schema: ${error.message}`
+        });
+      });
+  }
+
+  validateFormName(name) {
+    const { urls } = this.props;
+
+    if (!name || name.length === 0) {
+      this.setState({
+        editable: true,
+        exists: false
+      });
+      return;
+    }
+
+    const request = new Request(
+      `${urls.base}get_formid_editable/${name}`,
+      {
+        credentials: 'same-origin'
+      }
+    );
+
+    fetch(request)
+      .then(response => response.json())
+      .then(jsonData => {
+        this.setState({
+          editable: jsonData.editable,
+          owners: jsonData.owners,
+          exists: jsonData.exists
+        });
+      });
+  }
+
   changeFormName(name) {
     this.setState({
       formId: name
@@ -350,40 +440,11 @@ export default class Editor extends React.Component {
   }
 
   updateName(e) {
-    const { urls } = this.props;
     const name = e.target.value;
     this.setState({
       formId: name
     });
-
-    if (!name || name.length === 0) {
-      this.setState({
-        editable: true
-      });
-      return;
-    }
-
-    const request = new Request(
-      `${urls.base}get_formid_editable/${ name }`,
-      {
-        credentials: 'same-origin'
-      }
-    );
-
-    fetch(
-      request
-    ).then(
-      response => response.json()
-    ).then(
-      jsonData => {
-        this.setState({
-          editable: jsonData.editable,
-          owners: jsonData.owners,
-          exists: jsonData.exists
-        });
-      }
-    );
-
+    this.validateFormName(name);
   }
 
   updateMessage(e) {
@@ -406,6 +467,8 @@ export default class Editor extends React.Component {
       editable,
       exists,
       nameEdit,
+      urlToLoad,
+      urlLoadError,
       previousSchema,
       previousUISchema,
       previousFormTypes
@@ -466,19 +529,58 @@ export default class Editor extends React.Component {
                     disabled={ !formId || !unsaved || !editable }
                   >
                     Save
-                    { unsaved && <span class="badge">*</span> }
+                    { unsaved && <span className="badge">*</span> }
                   </button>
                 </div>
 
-                <div className='col-sm-4 col-sm-offset-2'>
+                <div className='col-sm-6'>
                   <Select
                     name='form-chooser'
                     placeholder='Load existing form...'
                     options={ options }
                     onChange={ this.selectForm }
+                    styles={{
+                      // Fixes the overlapping problem of the component
+                      menu: provided => ({ ...provided, zIndex: 9999 })
+                    }}
                   />
                 </div>
+              </div>
 
+              {/* Add new row for URL input */}
+              <div className='row' style={{ marginTop: '10px' }}>
+                <div className='col-sm-12'>
+                  <div className='input-group'>
+                    <input
+                      type='text'
+                      className='form-control'
+                      placeholder='Enter schema URL to load...'
+                      value={urlToLoad || ''}
+                      onChange={(e) => this.setState({ 
+                        urlToLoad: e.target.value,
+                        urlLoadError: null
+                      })}
+                    />
+                    <span className='input-group-btn'>
+                      <button
+                        type='button'
+                        className='btn btn-info'
+                        onClick={() => {
+                          if (urlToLoad) {
+                            this.loadFromUrl(urlToLoad);
+                          }
+                        }}
+                      >
+                        Load from URL
+                      </button>
+                    </span>
+                  </div>
+                  {urlLoadError && (
+                    <div className='alert alert-danger form-small-alert'>
+                      <strong>{urlLoadError}</strong>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className='row'>

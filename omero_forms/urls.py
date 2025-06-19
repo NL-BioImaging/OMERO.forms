@@ -4,8 +4,8 @@ from . import views
 urlpatterns = [
     # Designer App
     re_path(r"^designer/$", views.designer, name="omeroforms_designer"),
-    # API
-    re_path(r"^$", lambda x: None, name="omeroforms_base"),
+    # API/Template - handles both center panel and iframe cases
+    re_path(r"^$", views.forms_view, name="omeroforms_base"),
     # List all forms
     re_path(r"^list_forms/$", views.list_forms, name="omeroforms_list_forms"),
     # List the forms that are assigned to the user's active group that
