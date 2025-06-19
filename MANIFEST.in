@@ -1,5 +1,7 @@
 include README.rst
-include LICENSE.txt
+include License.txt
 include package.json
+include webpack.config.js
+include _custom_build/backend.py
 recursive-include omero_forms/static *
 recursive-include omero_forms/templates *
