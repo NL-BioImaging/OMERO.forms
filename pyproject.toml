@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm[toml]>=6.2", "wheel"]
+build-backend = "backend"
+backend-path = ["_custom_build"]
+
+[project]
+name = "omero-forms"
+description = "OMERO forms app for enhanced metadata input and provenance"
+readme = "README.rst"
+requires-python = ">=3.9"
+license = "AGPL-3.0"
+authors = [
+    { name = "D.P.W. Russell" },
+    { name = "T.T. Luik", email = "cellularimaging@amsterdamumc.nl" }
+]
+keywords = ["OMERO.web", "forms", "provenance", "history"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: JavaScript",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Internet :: WWW/HTTP :: WSGI",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Text Processing :: Markup :: HTML"
+]
+dependencies = [
+    "omero-web>=5.6.0",
+    "Django>=4.2.3,<4.3",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/NL-BioImaging/OMERO.forms"
+Download = "https://github.com/NL-BioImaging/OMERO.forms/archive/refs/tags/v{version}.tar.gz"
+
+[tool.setuptools_scm]
+
+[tool.setuptools]
+packages = [
+    "omero_forms",
+    "omero_forms.static.forms.js",
+    "omero_forms.templates.forms"
+]
+include-package-data = true

@@ -7,12 +7,12 @@ CUSTOM_SETTINGS_MAPPINGS = {
         "OMERO_FORMS_PRIV_USER",
         None,
         str,
-        "The priviledged username to be used for storing key-values",
+        "The privileged username to be used for storing key-values",
     ],
     "omero.web.forms.priv.password": [
         "OMERO_FORMS_PRIV_PASSWORD",
         None,
         str,
-        "The priviledged user's password to be used for storing key-values",
+        "The privileged user's password to be used for storing key-values",
     ],
 }
