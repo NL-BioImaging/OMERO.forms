@@ -177,8 +177,12 @@ def _get_assignments(conn, master_user_id, group_id=None, form_id=None):
         q += " AND anno.ns = :ns"
     else:
         q += " AND anno.ns LIKE :ns"
+        
+    # Use -1 to bypass query cache and ensure fresh results
+    service_opts = deepcopy(conn.SERVICE_OPTS)
+    service_opts.setOmeroGroup(-1)
 
-    rows = qs.projection(q, params, conn.SERVICE_OPTS)
+    rows = qs.projection(q, params, service_opts)
 
     if len(rows) == 0:
         return None

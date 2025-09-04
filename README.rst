@@ -128,10 +128,50 @@ This will detect changes and rebuild `static/forms/js/bundle.js` when there
 are any. This works in conjunction with django development server as that
 will be monitoring `bundle.js` for any changes:
 
+**Using yarn (recommended, especially on Windows with 'corepack yarn'):**
+
+::
+
+    yarn install
+    yarn run build
+    # Or for watch mode:
+    yarn run webpack --watch --mode development
+
+**Alternative with npm:**
+
 ::
 
     npm install --force
     node_modules/.bin/webpack --watch --mode development
+
+**For Docker development:**
+
+After building the frontend assets locally, mount the OMERO.forms directory into your web container and install as editable.
+
+**Option 1: Development container with overridden entrypoint**
+
+If your docker-compose has an overridden entrypoint (like ``entrypoint: ["sh", "-c", "tail -f /dev/null"]``), you can manually start OMERO.web:
+
+::
+
+    # Build frontend assets locally first
+    corepack yarn install 
+    corepack yarn run build
+    
+    # In your docker-compose.yml, mount OMERO.forms:
+    volumes:
+      - "../OMERO.forms/:/opt/omero/web/OMERO.forms"
+    
+    # Exec into container and install
+    docker-compose exec -u root omeroweb bash
+    pip install -e /opt/omero/web/OMERO.forms
+    
+    # Start OMERO.web (works because entrypoint is overridden)
+    omero web start
+
+**Option 2: Standard OMERO.web container**
+
+For standard containers without entrypoint override, you need to rebuild with the package included in the Dockerfile, or use a startup script that installs and starts the web service.
 
 Publishing Releases
 ===================
