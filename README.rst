@@ -1,6 +1,8 @@
 OMERO.forms
 ===========
 
+> 🚀 **This package is part of BIOMERO 2.0** — For complete deployment and FAIR infrastructure setup, start with the [**NL-BIOMERO Documentation**](https://nl-bioimaging.github.io/NL-BIOMERO/) 📖
+
 OMERO.forms is an extension to OMERO.web to enhance metadata input and provide provenance. Forms can be designed in a powerful and flexible JSON Schema, using the Designer - Editor component of OMERO.forms. These can then be assigned for use to appropriate groups by group owners or administrators. Users can then populate these forms for container objects (Such as a Dataset or Screen). The history of both the form (as it may evolve over time) and the data entered into it for an object is recorded in an immutable fashion. At any point it is possible to see what metadata was entered into a specific version of a form previously. Finally, the metadata entered into a form is reduced to an OMERO MapAnnotation and attached to the object for use by computational methods.
 
 The design of the forms themselves is based on `IETF JSON Schema Internet Draft Version 4 <http://json-schema.org/documentation.html>`_. A demonstration environment with a number of examples that could be used in OMERO.forms is available, `react-jsonschema-form <https://mozilla-services.github.io/react-jsonschema-form/>`_.
