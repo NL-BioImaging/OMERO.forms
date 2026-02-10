@@ -7,7 +7,7 @@ backend-path = ["_custom_build"]
 name = "omero-forms"
 description = "OMERO forms app for enhanced metadata input and provenance"
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "AGPL-3.0"
 authors = [
     { name = "D.P.W. Russell" },
@@ -33,7 +33,6 @@ classifiers = [
 ]
 dependencies = [
     "omero-web>=5.6.0",
-    "Django>=4.2.3,<4.3",
 ]
 dynamic = ["version"]
 
