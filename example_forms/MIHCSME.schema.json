@@ -1,0 +1,1018 @@
+{
+  "$id": "https://example.org/schemas/lei_mihcsme",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "MIHCSME Template for High Throughput Screening (HTS)",
+  "version": "3",
+  "type": "object",
+  "required": [
+    "investigation_information",
+    "study_information",
+    "assay_information",
+    "assay_conditions"
+  ],
+  "properties": {
+    "template_info_text": {
+      "type": "string",
+      "title": "",
+      "description": "Fixed template info (not entered by the user).",
+      "default": "Template Version: LEI-MIHCSME_userTemplate_v3\nGenerated: Jan-20-2023\nCreated by: RH"
+    },
+    "investigation_information": {
+      "$ref": "#/definitions/InvestigationInformationModule"
+    },
+    "study_information": {
+      "$ref": "#/definitions/StudyInformationModule"
+    },
+    "assay_information": {
+      "$ref": "#/definitions/AssayInformationModule"
+    },
+    "assay_conditions": {
+      "$ref": "#/definitions/AssayConditionsTable"
+    }
+  },
+  "definitions": {
+    "InvestigationInformationModule": {
+      "additionalProperties": false,
+      "title": "InvestigationInformationModule",
+      "type": "object",
+      "properties": {
+        "DataOwner_First_Name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "First Name"
+        },
+        "DataOwner_Middle_Name_s": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Middle Name(s) if any"
+        },
+        "DataOwner_Last_Name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Last Name"
+        },
+        "DataOwner_User_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Institutional user name"
+        },
+        "DataOwner_Institute": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Institute level, eg. Universiteit Leiden, Faculty of Science, Institute of Biology"
+        },
+        "DataOwner_E_Mail_Address": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Institution email address"
+        },
+        "DataOwner_ORCID_investigator": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "orcid id as url, eg. https://orcid.org/0000-0002-3704-3675"
+        },
+        "DataCollaborator_ORCID_Data_Collaborator": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "ORCID is of collaborator with experimental, collection or analysis part of this investigation"
+        },
+        "DataCollaborator_ORCID_Data_Collaborator_2": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "ORCID is of collaborator with experimental, collection or analysis part of this investigation"
+        },
+        "InvestigationInformation_Project_ID": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "EU/NWO/consortium ID – Examples: EuTOX"
+        },
+        "InvestigationInformation_Investigation_Title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "High level concept to link related studies. Could be the main hypothesis/question you want to investigate as part of your research. Could be a chapter/thesis of your work."
+        },
+        "InvestigationInformation_Investigation_internal_ID": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Corresponding internal ID for your investigation."
+        },
+        "InvestigationInformation_Investigation_description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Short description for your investigation."
+        }
+      }
+    },
+    "StudyInformationModule": {
+      "additionalProperties": false,
+      "title": "StudyInformationModule",
+      "type": "object",
+      "properties": {
+        "Study_Study_Title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Manuscript/chapter/publication/paragraph title describing purpose or intention for one or multiple assays (screens/experiments)"
+        },
+        "Study_Study_internal_ID": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Study ID, linked to ELN or lab journal"
+        },
+        "Study_Study_Description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of study with additional unstructured information about this study possibly not covered elsewhere in this template."
+        },
+        "Study_Study_Key_Words": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "List of key words associated with your study (EFO-terms). Examples: FDA approved drugs, Kinase inhibitors, DNA damage response, Unfolded protein response, Oxidative stress response, Inflammatory signaling, chemical similarity"
+        },
+        "Biosample_Biosample_Taxon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "NCBI-taxon id, human = NCBITAXON:9606;"
+        },
+        "Biosample_Biosample_description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of biosample genotype; Additional unstructured information about organisms used in this experiment."
+        },
+        "Biosample_Biosample_Organism": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Which organism is your cell lines or tissue from. Examples: Human or mouse"
+        },
+        "Biosample_Number_of_cell_lines_used": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "In case multiple cell lines are used indicate here"
+        },
+        "Library_Library_File_Name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Library file info"
+        },
+        "Library_Library_File_Format": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Library file info"
+        },
+        "Library_Library_Type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Library file info"
+        },
+        "Library_Library_Manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Library file info"
+        },
+        "Library_Library_Version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Library file info"
+        },
+        "Library_Library_Experimental_Conditions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Any experimental conditions some cells were grown under as part of the study enter the information here e.g. different environmental stress conditions, or mutant background compared to wild type."
+        },
+        "Library_Quality_Control_Description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A brief description of the kind of quality control measures that were taken."
+        },
+        "Protocols_HCS_library_protocol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "Url/doi protocols.io or ELN associated url. At least SOP/protocol filename"
+        },
+        "Protocols_growth_protocol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "Url/doi protocols.io or ELN associated url. At least SOP/protocol filename"
+        },
+        "Protocols_treatment_protocol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "Url/doi protocols.io or ELN associated url. At least SOP/protocol filename"
+        },
+        "Protocols_HCS_data_analysis_protocol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "Url/doi protocols.io or ELN associated url. At least SOP/protocol filename"
+        },
+        "Plate_Plate_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Example: uclear"
+        },
+        "Plate_Plate_type_Manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Example: Greiner Bio-One"
+        },
+        "Plate_Plate_type_Catalog_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Example:781081"
+        }
+      }
+    },
+    "AssayInformationModule": {
+      "additionalProperties": false,
+      "title": "AssayInformationModule",
+      "type": "object",
+      "properties": {
+        "Assay_Assay_Title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Screen name"
+        },
+        "Assay_Assay_internal_ID": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Experimental ID, e.g. aMV-010, linked to ELN or labjournal"
+        },
+        "Assay_Assay_Description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of screen plus additional unstructured information about screen not covered elsewhere. Stages of HCS: either primary screen, secondary screen or validation screen. EFO terms"
+        },
+        "Assay_Assay_number_of_biological_replicates": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Total number of biol. Repl."
+        },
+        "Assay_Number_of_plates": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Total number of plates, n-plates"
+        },
+        "Assay_Assay_Technology_Type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Imaging method, Fbbi terms.",
+          "$ref": "#/definitions/FBBIImagingMethods"
+        },
+        "Assay_Assay_Type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "List of options: sub types of HCS e.g. Gene Knock down, RNAi, compount,  EFO terms",
+          "$ref": "#/definitions/EFOAssayTypes"
+        },
+        "Assay_Assay_External_URL": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "ELN or any other external url link to this screen."
+        },
+        "Assay_Assay_data_URL": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "OMERO url link to this screen."
+        },
+        "AssayComponent_Imaging_protocol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "Url to protocols.io or protocols in ELN, at least protocol file name or free text description of imaging protocol"
+        },
+        "AssayComponent_Sample_preparation_protocol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Sample preparation method (Formaldahude (PFA) fixed tissue, Live cells, unfixed tissue). FBbi terms"
+        },
+        "Biosample_Cell_lines_storage_location": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Storage location according to Database used or at least location e.g. Example -150 liquid N2 tank 4th floor GE4.xx"
+        },
+        "Biosample_Cell_lines_clone_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Storage location DB info"
+        },
+        "Biosample_Cell_lines_Passage_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Passage number of your cells. In case different passage number is used for the replicates, please indicate it in Comment_users."
+        },
+        "ImageData_Image_number_of_pixelsX": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Indicate number of pixels in x in images"
+        },
+        "ImageData_Image_number_of_pixelsY": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Indicate number of pixels in y in images"
+        },
+        "ImageData_Image_number_of_z_stacks": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Indicate number z stacks in image, single image is z=1"
+        },
+        "ImageData_Image_number_of_channels": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Indicate number of channels in your image, single channel image c=1, including your TD channel"
+        },
+        "ImageData_Image_number_of_timepoints": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Indicate number of time point(s) in your image"
+        },
+        "ImageData_Image_sites_per_well": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Number of fields, numeric value"
+        },
+        "ImageAcquisition_Microscope_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "description": "Url to micrometa app file link or other url describing your microscope. At least Microscope name."
+        },
+        "Specimen_Channel_Transmission_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Channel id is dependent on different machines, first or last.  If No transmission is acquired state NA"
+        },
+        "Specimen_Channel_1_visualization_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Visualization method (example: Hoechst staining )"
+        },
+        "Specimen_Channel_1_entity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Entity visualized (example: DNA )"
+        },
+        "Specimen_Channel_1_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Label used for entity (example:Nuclei) Best practice to use similar label as your CP-pipeline"
+        },
+        "Specimen_Channel_1_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "sequential id of channel order in your image"
+        },
+        "Specimen_Channel_2_visualization_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Visualization method (example: GFP )"
+        },
+        "Specimen_Channel_2_entity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Entity visualized (example: MAP1LC3B )"
+        },
+        "Specimen_Channel_2_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Label used for entity (example:GFP-LC3) Best practice to use similar label as your CP-pipeline"
+        },
+        "Specimen_Channel_2_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "sequential id of channel order in your image"
+        },
+        "Specimen_Channel_3_visualization_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Visualization method (example: PI staining )"
+        },
+        "Specimen_Channel_3_entity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Entity visualized (example: Death cell DNA )"
+        },
+        "Specimen_Channel_3_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Label used for entity (example:PI) Best practice to use similar label as your CP-pipeline"
+        },
+        "Specimen_Channel_3_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "sequential id of channel order in your image"
+        },
+        "Specimen_Channel_4_visualization_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Visualization method (example: Apoptotic marker Annexin V staining )"
+        },
+        "Specimen_Channel_4_entity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Entity visualized (example: Apoptotic cells )"
+        },
+        "Specimen_Channel_4_label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Label used for entity (example:Annexin-V) Best practice to use similar label as your CP-pipeline"
+        },
+        "Specimen_Channel_4_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "sequential id of channel order in your image"
+        }
+      }
+    },
+    "AssayConditionsTable": {
+      "additionalProperties": false,
+      "title": "AssayConditionsTable",
+      "description": "List of each well and plate containing entity, dose and other characteristics required for your study.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Plate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Plate value."
+          },
+          "Well": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Well value."
+          },
+          "Treatment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Treatment value."
+          },
+          "Concentration": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Treatment concentration.",
+            "minimum": 0
+          },
+          "Unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Unit value."
+          },
+          "CellLine": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CellLine value."
+          },
+          "TimeTreatment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "TimeTreatment value."
+          },
+          "RepID": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "RepID value."
+          }
+        }
+      }
+    },
+    "FBBIImagingMethods": {
+      "title": "FBBIImagingMethods",
+      "type": "string",
+      "enum": [
+        "microscopy",
+        "microscopy with lenses",
+        "light microscopy",
+        "bright-field microscopy",
+        "dark-field microscopy",
+        "evanescent wave scattering",
+        "differential interference contrast microscopy",
+        "fluorescence microscopy",
+        "confocal microscopy",
+        "single-spot confocal microscopy",
+        "spinning disk confocal microscopy",
+        "slit-scan confocal microscopy",
+        "array-scan confocal microscopy",
+        "multi-photon microscopy",
+        "two-photon laser scanning microscopy",
+        "FLIP",
+        "FRAP",
+        "FRET",
+        "FLIM",
+        "SPIM",
+        "fluorescence polarization microscopy",
+        "evanescent wave microscopy",
+        "phase contrast microscopy",
+        "polarization microscopy",
+        "orientation-independent polarization microscopy",
+        "time lapse microscopy",
+        "CARS",
+        "OCT",
+        "electron microscopy",
+        "scanning electron microscopy (SEM)",
+        "secondary_electron imaging",
+        "back-scattered_electron imaging",
+        "serial block face SEM (SBFSEM)",
+        "focussed ion beam scanning electron microscopy (FIB-SEM)",
+        "transmission electron microscopy (TEM)",
+        "high-voltage electron microscopy (HVEM)",
+        "intermediate voltage electron microacopy (IVEM)",
+        "scanning-transmission electron microscopy",
+        "EELS imaging",
+        "EDAX imaging",
+        "scanning probe microscopy",
+        "atomic force microscopy",
+        "scanning tunneling microscopy",
+        "nearfield scanning optical microscopy (ANSOM)",
+        "ANSOM",
+        "X-ray microscopy"
+      ]
+    },
+    "FBBIVisualizationMethods": {
+      "title": "FBBIVisualizationMethods",
+      "type": "string",
+      "enum": [
+        "visualization method",
+        "[14]C",
+        "[3]H",
+        "[32]P",
+        "[33]P",
+        "[35]S",
+        "4',6-diamidino-2-phenylindole (DAPI)",
+        "5-SFX fluorescein RNA fill",
+        "7-amino-actinomycin D",
+        "AceFP",
+        "acid phosphatase",
+        "acridine homodimer",
+        "acridine orange",
+        "affinity for specific proteins",
+        "Alexa Fluor 488",
+        "Alexa Fluor 546",
+        "Alexa Fluor 555",
+        "Alexa Fluor 568",
+        "Alexa Fluor 594",
+        "Alexa Fluor 610",
+        "Alexa Fluor 633",
+        "Alexa Fluor 647",
+        "alkaline phosphatase",
+        "alpha-bungarotoxin",
+        "AmCyanFP",
+        "aminomethylcoumarin",
+        "antibody",
+        "AQ143",
+        "Arachis hypogaea (PNA)",
+        "AsRed2FP",
+        "aurothioglucose",
+        "Azami GreenFP",
+        "AzuriteFP",
+        "batrachatoxin",
+        "beta-galactosidase",
+        "beta-glucuronidase",
+        "biotin",
+        "biotin ethylenediamine fill",
+        "Blue fluorescent protein from Aequorea victoria",
+        "Blue fluorescent proteins from Anthozoa",
+        "botulinum toxin",
+        "bsDronpa",
+        "c-MYC peptide tag",
+        "Cascade blue",
+        "cationic colloidal gold",
+        "CeruleanFP",
+        "cholera toxin B",
+        "CitrineFP",
+        "CMX rosamine (Mitotracker Red)",
+        "cobalt fill",
+        "conconavalin A",
+        "CopGFP",
+        "copper salt",
+        "cresyl fast violet",
+        "Cy2",
+        "Cy3",
+        "Cy5",
+        "Cyan fluorescent protein from Aequorea",
+        "Cyan fluorescent proteins from Anthozoa",
+        "CyPet",
+        "Dendra2FP",
+        "dEOSFP",
+        "DiA",
+        "DiD",
+        "DiI",
+        "DiIC16",
+        "DiO",
+        "DiOC6 (3,3'-dihexyloxacarbocyanine iodide)",
+        "DiR",
+        "DNA probe",
+        "Dronpa",
+        "Dronpa-3",
+        "DsRed",
+        "DsRed-ES FP",
+        "DsRed-Express2FP",
+        "DsRed-ExpressFP",
+        "DsRed-MaxFP",
+        "DsRed-monomerFP",
+        "DsRed2FP",
+        "dTomatoFP",
+        "E2GFP",
+        "EBFP",
+        "ECFP",
+        "EGFP",
+        "electron dense label",
+        "electron-dense stain",
+        "EmeraldFP",
+        "enzyme label",
+        "eosin",
+        "eqFP611",
+        "esterase",
+        "ethidium bromide",
+        "EYFP",
+        "Far-red fluorescent proteins from Anthozoa",
+        "Fast-FT",
+        "FLAG peptide tag",
+        "fluor conjugated actin fill",
+        "fluor conjugated tubulin fill",
+        "fluor labeled protein fill",
+        "fluor labeled RNA fill",
+        "Fluorescein (FITC)",
+        "fluorescent dextran fill",
+        "fluorescent label",
+        "fluorescent protein derived from Aequorea victoria",
+        "fluorescent protein derived from Anthozoa",
+        "fluorescent protein derived from Arabidopsis",
+        "fluorescent protein tag",
+        "fluorescent protein timer",
+        "fuchsin",
+        "genetically encoded biotin tag",
+        "genetically encoded enzyme",
+        "genetically encoded tag",
+        "giemsa",
+        "glucose oxidase",
+        "gold",
+        "Green fluorescent protein from Aequorea",
+        "Green fluorescent proteins from Anthozoa",
+        "HA peptide tag",
+        "HcRed-tandemFP",
+        "HcRed1FP",
+        "Helix pomatia agglutinin",
+        "hematoxylin",
+        "Hoechst 33258",
+        "Hoechst 33342",
+        "horseradish peroxidase",
+        "intracellular filling",
+        "IrisFP",
+        "JRedFP",
+        "KaedeFP",
+        "KatushkaFP",
+        "KFP1",
+        "Kusabira OrangeFP",
+        "Kusabira OrangeFP2",
+        "labeled primary antibody",
+        "lead salt",
+        "lectin",
+        "lucifer yellow",
+        "macromolecular probe",
+        "mAppleFP",
+        "mCherryFP",
+        "mCyFP",
+        "Medium-FT",
+        "membrane impermeant probe",
+        "membrane-permeant probe",
+        "mEOS2FP",
+        "metabolically incorporated radioisotope",
+        "methyl green",
+        "methyl violet",
+        "methylene blue",
+        "miniSOG",
+        "miscellaneous fill",
+        "mKate2FP",
+        "mKateFP",
+        "mKikGR",
+        "molybdenum compound",
+        "mOrange2FP",
+        "mOrangeFP",
+        "mPlumFP",
+        "mRasberryFP",
+        "mRFP1",
+        "mRubyFP",
+        "mStrawberryFP",
+        "mTagBFP",
+        "mTFP0.7",
+        "mTFP1",
+        "mWasabiFP",
+        "negative staining",
+        "Nile blue A",
+        "Nile red",
+        "nitro blue tetrazolium chloride",
+        "non-immunological protein probe",
+        "non-specific protein affinity",
+        "nuclear fast red",
+        "optical highlighter",
+        "optically-dense stain",
+        "Orange fluorescent proteins from Anthozoa",
+        "orcein",
+        "organelle-specific probe",
+        "osmium tetroxide",
+        "other negative stain",
+        "other radioisotope",
+        "PA-CFP",
+        "PA-GFP",
+        "PA-mCherry1FP",
+        "PA-mRFP",
+        "PadronFP",
+        "peptide-nucleic acid probe",
+        "phalloidin",
+        "Phamret",
+        "Phaseolus vulgaris lectin PHA-L)",
+        "PhiYFP",
+        "photoactivatable fluorescent protein",
+        "photoconvertible fluorescent protein",
+        "photoconvertible/photoswitchable fluorescent protein",
+        "photoswitchable fluorescent protein",
+        "phototropin 2",
+        "potassium permanganate",
+        "primary antibody plus labeled secondary antibody",
+        "probe for endoplasmic reticulum",
+        "probe for Golgi",
+        "probe for lipid",
+        "probe for lysosomes",
+        "probe for mitochondria",
+        "probe for protein",
+        "probes for nucleic acid",
+        "propidium iodide",
+        "pyronine",
+        "Red fluorescent proteins from Anthozoa",
+        "Rhodamine",
+        "rhodamine 123",
+        "rhodamine B",
+        "RNA probe",
+        "rsCherryFP",
+        "rsCherryRevFP",
+        "rsFastLimeFP",
+        "SCFP",
+        "sequence-specific nucleic acid probe",
+        "shadowing and plating",
+        "silver-intensified cobalt fill",
+        "SiriusFP",
+        "Slow-FT",
+        "small genetically encoded tag",
+        "small-molecule probe",
+        "soybean agglutinin",
+        "stain with broad specificity",
+        "SuperfolderFP",
+        "SYFP",
+        "SYTO Blue",
+        "SYTO Green",
+        "SYTO Orange",
+        "SYTO Red",
+        "SYTOX Green",
+        "T-SapphireFP",
+        "TagCFP",
+        "TagGFP",
+        "TagGFP2",
+        "TagRFP",
+        "TagRFP-T",
+        "TagYFP",
+        "taxol",
+        "tdKatuskaFP",
+        "tdRFP611",
+        "tdRFP639",
+        "tdTomatoFP",
+        "tetracysteine tag",
+        "Tetramethyl rhodamine (TRITC)",
+        "tetrodotoxin",
+        "TexasRed",
+        "toluidine blue",
+        "TopazFP",
+        "tungsten compound",
+        "turboRFP",
+        "TurboYFP",
+        "uranium compound",
+        "uranyl salt",
+        "VenusFP",
+        "visualization by chemical attribute",
+        "visualization of contiguous regions",
+        "vizualization of label conjugated to probe",
+        "wheat germ agglutinin",
+        "wtEOSFP",
+        "wtKIikGR",
+        "X-Rhodamine",
+        "X-rhodamine RNA fill",
+        "Yellow fluorescent protein from Aequorea",
+        "Yellow fluorescent proteins from Anthozoa",
+        "YO-PRO-1",
+        "yPet",
+        "ZsGreenFP",
+        "ZsYellowFP"
+      ]
+    },
+    "EFOStudyTypes": {
+      "title": "EFOStudyTypes",
+      "type": "string",
+      "enum": [
+        "high content analysis of cells",
+        "high content screen",
+        "other type used, described in Study Description"
+      ]
+    },
+    "EFOAssayTypes": {
+      "title": "EFOAssayTypes",
+      "type": "string",
+      "enum": [
+        "high content analysis of cells",
+        "high content analysis of cells by molecular content",
+        "high content analysis of cells by morphological and physical properties",
+        "high content screen",
+        "high content screen of cells in a gene deletion library",
+        "high content screen of cells in treated with a compound library",
+        "high content screen of cells treated with library of siRNAs",
+        "other type used, described in Study Description"
+      ]
+    }
+  }
+}
