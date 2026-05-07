@@ -1,7 +1,9 @@
 OMERO.forms
 ===========
 
-> 🚀 **This package is part of <img src="https://raw.githubusercontent.com/NL-BioImaging/OMERO.biomero/refs/tags/v1.2.1/webapp/src/img/biomero-logo.svg" alt="BIOMERO" height="16" style="height:16px; width:auto; vertical-align:middle;"> BIOMERO 2.0** — For complete deployment and FAIR infrastructure setup, start with the [**NL-BIOMERO Documentation**](https://nl-bioimaging.github.io/NL-BIOMERO/) 📖
+.. note::
+
+   🚀 **This package is part of** |biomero_logo| **BIOMERO 2.0** — For complete deployment and FAIR infrastructure setup, start with the `NL-BIOMERO Documentation <https://nl-bioimaging.github.io/NL-BIOMERO/>`_ 📖
 
 OMERO.forms is an extension to OMERO.web to enhance metadata input and provide provenance. Forms can be designed in a powerful and flexible JSON Schema, using the Designer - Editor component of OMERO.forms. These can then be assigned for use to appropriate groups by group owners or administrators. Users can then populate these forms for container objects (Such as a Dataset or Screen). The history of both the form (as it may evolve over time) and the data entered into it for an object is recorded in an immutable fashion. At any point it is possible to see what metadata was entered into a specific version of a form previously. Finally, the metadata entered into a form is reduced to an OMERO MapAnnotation and attached to the object for use by computational methods.
 
@@ -189,3 +191,7 @@ The package can then be installed via pip:
 ::
 
     pip install omero-forms
+
+.. |biomero_logo| image:: https://raw.githubusercontent.com/NL-BioImaging/OMERO.biomero/refs/tags/v1.2.1/webapp/src/img/biomero-logo.svg
+   :height: 16px
+   :alt: BIOMERO
