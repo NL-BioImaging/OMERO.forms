@@ -299,6 +299,45 @@ def get_form_data_history(
 
 @login_required(setGroupContext=True)
 @with_su
+def list_form_reuse_candidates(
+    request,
+    form_id,
+    obj_type,
+    obj_id,
+    conn=None,
+    su_conn=None,
+    form_master=None,
+    **kwargs
+):
+    if request.method != "GET":
+        return HttpResponseNotAllowed("Methods allowed: GET")
+
+    if obj_type not in ["Project", "Dataset", "Plate", "Screen"]:
+        return HttpResponseBadRequest("%s not a valid obj_type" % obj_type)
+
+    try:
+        obj_id = int(obj_id)
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("Object ID must be a long integer")
+
+    if conn.getObject(obj_type, obj_id) is None:
+        raise Http404(
+            "If this object exists, this user does not have permission to read it"
+        )
+
+    candidates = utils.list_form_reuse_candidates(
+        su_conn,
+        conn,
+        form_master,
+        form_id,
+        exclude_obj_type=obj_type,
+        exclude_obj_id=obj_id,
+    )
+    return JsonResponse({"candidates": candidates})
+
+
+@login_required(setGroupContext=True)
+@with_su
 def get_formid_editable(
     request, form_id, conn=None, su_conn=None, form_master=None, **kwargs
 ):
@@ -416,6 +455,7 @@ def save_form_data(
     form_timestamp = update_data["formTimestamp"]
     form_data = update_data["data"]
     message = update_data["message"]
+    copied_from = update_data.get("copiedFrom")
     changed_at = datetime.now()
     changed_by = conn.user.getId()
 
@@ -435,6 +475,13 @@ def save_form_data(
             "This user does not have permission " "to submit data to this form"
         )
 
+    try:
+        copied_from = utils.resolve_reuse_provenance(
+            su_conn, conn, form_master, form_id, copied_from
+        )
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
+
     utils.add_form_data(
         su_conn,
         form_master,
@@ -446,6 +493,7 @@ def save_form_data(
         form_data,
         changed_by,
         changed_at,
+        copied_from=copied_from,
     )
 
     utils.add_form_data_to_obj(su_conn, conn, form_id, obj_type, obj_id, form_data)

@@ -84,13 +84,16 @@ object annotations still depend on the form.
 
 Existing history is organized by form and target object, not by user profile.
 Although each version records `changedBy`, reusable-data discovery must not
-expose a submission merely because it is stored centrally.
+expose a submission merely because it is stored centrally. The same-form
+Reuse view may aggregate the latest snapshot from other objects only when the
+current user can still read each source object; this is the same permission
+boundary as opening that object's History directly.
 
-- **Mine** may show versions where `changedBy` is the current user and the user
-  can still read the source OMERO object.
+- **Edited by me** can be added as a filter using `changedBy`; it is not a
+  separate ownership boundary because form history is object-scoped.
 - **Group** reuse should require an explicitly shared preset and current group
-  access. It should not automatically expose every group member's historical
-  submission.
+  access. A preset is distinct from reusing the latest snapshot of an OMERO
+  object the user can already read.
 - Every list and detail request must re-check source-object permissions.
 
 ### Reuse workflow
@@ -130,11 +133,18 @@ mutable source data. An initial implementation can reuse whole-form data;
 schema-section presets such as only `investigator` can be added later using an
 explicit JSON pointer and compatible form identity.
 
-## Recommended delivery order
+## Delivery status and recommended order
+
+Implemented:
 
 1. Full unassignment and required object-type validation.
-2. Archive/unarchive with no deletion and no identity changes.
-3. Reuse a known history entry as unsaved values, recording `copiedFrom`.
-4. User drafts and explicitly shared presets.
-5. Stable `formKey` plus editable `displayName` for true renames.
-6. Consider guarded hard deletion only after dependency checks exist.
+2. Same-form reuse of the latest snapshot on other readable objects, copied
+   into the Editor as unsaved values and recorded with `copiedFrom` provenance.
+
+Next:
+
+1. Archive/unarchive with no deletion and no identity changes.
+2. Explicit predecessor-form relationships and reviewed field mappings.
+3. User drafts and explicitly shared presets.
+4. Stable `formKey` plus editable `displayName` for true renames.
+5. Consider guarded hard deletion only after dependency checks exist.

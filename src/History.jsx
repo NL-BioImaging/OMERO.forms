@@ -112,15 +112,24 @@ export default class History extends React.Component {
       const version = formVersions[data.formTimestamp];
 
       return (
-        <Form
-          schema={ JSON.parse(version.schema) }
-          uiSchema={ JSON.parse(version.uiSchema) }
-          formData={ JSON.parse(data.formData) }
-          validator={validator}  // Add the validator prop
-          onSubmit={ this.submitForm }
-        >
-          <button type="button" className="btn btn-primary disabled">Submit</button>
-        </Form>
+        <div>
+          {data.copiedFrom && (
+            <div className='alert alert-info'>
+              Copied from {data.copiedFrom.sourceObjectType}{' '}
+              {data.copiedFrom.sourceObjectId}, submission{' '}
+              {formatDate(data.copiedFrom.sourceDataTimestamp)}.
+            </div>
+          )}
+          <Form
+            schema={ JSON.parse(version.schema) }
+            uiSchema={ JSON.parse(version.uiSchema) }
+            formData={ JSON.parse(data.formData) }
+            validator={validator}  // Add the validator prop
+            onSubmit={ this.submitForm }
+          >
+            <button type="button" className="btn btn-primary disabled">Submit</button>
+          </Form>
+        </div>
       );
     }
 

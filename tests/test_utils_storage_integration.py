@@ -100,6 +100,22 @@ class FakeUserConnection:
         return 7
 
 
+class FakeReadableObject:
+    def __init__(self, name):
+        self.name = name
+
+    def getName(self):
+        return self.name
+
+
+class FakeObjectConnection:
+    def __init__(self, objects):
+        self.objects = objects
+
+    def getObject(self, obj_type, obj_id):
+        return self.objects.get((obj_type, obj_id))
+
+
 class UtilsStorageIntegrationTest(unittest.TestCase):
     def setUp(self):
         FakeMapAnnotationWrapper.instances.clear()
@@ -398,7 +414,151 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
 
         self.assertEqual([item["message"] for item in history], ["latest", "older"])
         self.assertEqual(history[0]["changedAt"], datetime.fromisoformat(latest_changed_at))
+        self.assertEqual(history[0]["dataTimestamp"], latest_changed_at)
         self.assertEqual(json.loads(history[0]["formData"])["notes"], "x" * 6000)
+
+    def test_submission_history_preserves_optional_reuse_provenance(self):
+        changed_at = "2026-08-26T12:00:00.123456"
+        copied_from = {
+            "sourceFormId": "Investigation",
+            "sourceFormTimestamp": "schema-v1",
+            "sourceObjectType": "Project",
+            "sourceObjectId": 12,
+            "sourceDataTimestamp": "2026-08-25T10:00:00.123456",
+        }
+        payload = json.dumps(
+            {
+                "formId": "Investigation",
+                "formTimestamp": "schema-v2",
+                "formData": "{}",
+                "changedBy": 7,
+                "changedAt": changed_at,
+                "message": "reused",
+                "copiedFrom": copied_from,
+            }
+        )
+
+        with mock.patch.object(
+            utils,
+            "_get_form_data",
+            return_value=FakeAnnotation([(changed_at, payload)]),
+        ):
+            history = list(
+                utils.get_form_data_history(
+                    None, None, "Investigation", "Dataset", 22
+                )
+            )
+
+        self.assertEqual(history[0]["copiedFrom"], copied_from)
+
+    def test_reuse_candidates_include_latest_values_from_readable_objects_only(self):
+        def annotation(obj_id, changed_at, message):
+            payload = json.dumps(
+                {
+                    "formId": "Investigation",
+                    "formTimestamp": "schema-v1",
+                    "formData": "{}",
+                    "changedBy": 7,
+                    "changedAt": changed_at,
+                    "message": message,
+                }
+            )
+            return (("Project", obj_id, "Investigation"), FakeAnnotation([(changed_at, payload)]))
+
+        annotations = [
+            annotation(11, "2026-08-24T12:00:00.123456", "current"),
+            annotation(12, "2026-08-25T12:00:00.123456", "readable"),
+            annotation(13, "2026-08-26T12:00:00.123456", "hidden"),
+        ]
+        user_connection = FakeObjectConnection(
+            {("Project", 12): FakeReadableObject("Previous project")}
+        )
+
+        with mock.patch.object(
+            utils, "_find_form_data_annotations", return_value=annotations
+        ):
+            candidates = utils.list_form_reuse_candidates(
+                None,
+                user_connection,
+                99,
+                "Investigation",
+                exclude_obj_type="Project",
+                exclude_obj_id=11,
+            )
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["sourceObjectId"], 12)
+        self.assertEqual(candidates[0]["sourceObjectName"], "Previous project")
+        self.assertEqual(
+            candidates[0]["sourceDataTimestamp"],
+            "2026-08-25T12:00:00.123456",
+        )
+
+    def test_reuse_provenance_requires_a_readable_exact_submission(self):
+        source_changed_at = "2026-08-25T12:00:00.123456"
+        payload = json.dumps(
+            {
+                "formId": "Investigation",
+                "formTimestamp": "schema-v1",
+                "formData": "{}",
+                "changedBy": 7,
+                "changedAt": source_changed_at,
+                "message": "source",
+            }
+        )
+        copied_from = {
+            "sourceFormId": "Investigation",
+            "sourceFormTimestamp": "schema-v1",
+            "sourceObjectType": "Project",
+            "sourceObjectId": 12,
+            "sourceDataTimestamp": source_changed_at,
+            "sourceObjectName": "ignored client label",
+        }
+        readable_connection = FakeObjectConnection(
+            {("Project", 12): FakeReadableObject("Previous project")}
+        )
+
+        with mock.patch.object(
+            utils,
+            "_get_form_data",
+            return_value=FakeAnnotation([(source_changed_at, payload)]),
+        ):
+            resolved = utils.resolve_reuse_provenance(
+                None, readable_connection, 99, "Investigation", copied_from
+            )
+
+        self.assertEqual(resolved, {
+            key: copied_from[key]
+            for key in (
+                "sourceFormId",
+                "sourceFormTimestamp",
+                "sourceObjectType",
+                "sourceObjectId",
+                "sourceDataTimestamp",
+            )
+        })
+
+        with self.assertRaisesRegex(ValueError, "not readable"):
+            utils.resolve_reuse_provenance(
+                None,
+                FakeObjectConnection({}),
+                99,
+                "Investigation",
+                copied_from,
+            )
+
+    def test_form_data_namespace_parser_supports_punctuation(self):
+        self.assertEqual(
+            utils.parse_form_data_namespace(
+                "hms.harvard.edu/omero/forms/data/Dataset/123/LEI-MIBME v1.0"
+            ),
+            ("Dataset", 123, "LEI-MIBME v1.0"),
+        )
+        self.assertIsNone(
+            utils.parse_form_data_namespace(
+                "hms.harvard.edu/omero/forms/data/Image/123/Unsupported"
+            )
+        )
 
     def test_updating_submission_prepends_complete_chunk_block(self):
         old_changed_at = "2026-08-25T12:00:00.123456"
@@ -428,12 +588,23 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
                 json.dumps({"notes": "x" * 6000}),
                 7,
                 changed_at,
+                copied_from={
+                    "sourceFormId": "test-form",
+                    "sourceFormTimestamp": "schema-v1",
+                    "sourceObjectType": "Project",
+                    "sourceObjectId": 12,
+                    "sourceDataTimestamp": old_changed_at,
+                },
             )
 
         entries = [(row.name, row.value) for row in annotation.rows]
         decoded_history = list(iter_payload_entries(entries))
         self.assertEqual(decoded_history[0][0], changed_at.isoformat())
         self.assertEqual(json.loads(decoded_history[0][1])["message"], "latest")
+        self.assertEqual(
+            json.loads(decoded_history[0][1])["copiedFrom"]["sourceObjectId"],
+            12,
+        )
         self.assertEqual(decoded_history[1], (old_changed_at, old_payload))
         self.assertEqual(connection.update_service.saved, [annotation])
 

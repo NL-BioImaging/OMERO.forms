@@ -45,6 +45,14 @@ urlpatterns = [
         views.get_form_data_history,
         name="omeroforms_get_form_data_history",
     ),
+    # List the latest saved values for this form on other readable objects
+    re_path(
+        r"^list_form_reuse_candidates/"
+        r"(?P<form_id>%s)/(?P<obj_type>\w+)/(?P<obj_id>[0-9]+)/$"
+        % FORM_ID_PATTERN,
+        views.list_form_reuse_candidates,
+        name="omeroforms_list_form_reuse_candidates",
+    ),
     # Get groups that the user can manage
     re_path(
         r"^get_managed_groups/$",

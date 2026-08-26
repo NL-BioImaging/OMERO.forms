@@ -13,6 +13,8 @@ from .storage_codec import encode_payload, iter_payload_entries
 
 
 SOURCE_URL_MESSAGE_PATTERN = re.compile(r"from (https://\S+)$")
+FORM_DATA_NAMESPACE_PREFIX = "hms.harvard.edu/omero/forms/data/"
+FORM_DATA_OBJECT_TYPES = {"Project", "Dataset", "Plate", "Screen"}
 
 
 def _declared_source_url(data):
@@ -653,7 +655,8 @@ def _get_form_data(conn, master_user_id, form_id, obj_type, obj_id):
     Returns a MapAnnotationI object or None
     """
 
-    namespace = "hms.harvard.edu/omero/forms/data/%s/%s/%s" % (
+    namespace = "%s%s/%s/%s" % (
+        FORM_DATA_NAMESPACE_PREFIX,
         obj_type,
         obj_id,
         form_id,
@@ -680,6 +683,57 @@ def _get_form_data(conn, master_user_id, form_id, obj_type, obj_id):
         return None
 
     return rows[0][0].val
+
+
+def parse_form_data_namespace(namespace):
+    """Return (object type, object id, form id) for a data namespace."""
+    if not isinstance(namespace, str) or not namespace.startswith(
+        FORM_DATA_NAMESPACE_PREFIX
+    ):
+        return None
+
+    parts = namespace[len(FORM_DATA_NAMESPACE_PREFIX) :].split("/", 2)
+    if len(parts) != 3 or parts[0] not in FORM_DATA_OBJECT_TYPES:
+        return None
+
+    try:
+        object_id = int(parts[1])
+    except (TypeError, ValueError):
+        return None
+
+    if not parts[2]:
+        return None
+    return parts[0], object_id, parts[2]
+
+
+def _find_form_data_annotations(conn, master_user_id, form_id):
+    """Find centrally stored data annotations for one exact form id."""
+    params = omero.sys.ParametersI()
+    params.addLong("mid", master_user_id)
+    params.add(
+        "ns",
+        omero.rtypes.wrap("%s%%/%s" % (FORM_DATA_NAMESPACE_PREFIX, form_id)),
+    )
+
+    rows = conn.getQueryService().projection(
+        """
+        SELECT anno
+        FROM Experimenter user
+        JOIN user.annotationLinks links
+        JOIN links.child anno
+        WHERE anno.class = MapAnnotation
+        AND user.id = :mid
+        AND anno.ns LIKE :ns
+        """,
+        params,
+        conn.SERVICE_OPTS,
+    )
+
+    for row in rows:
+        annotation = row[0].val
+        parsed = parse_form_data_namespace(annotation.ns.val)
+        if parsed is not None and parsed[2] == form_id:
+            yield parsed, annotation
 
 
 def list_form_data_orphans(conn, master_user_id):
@@ -765,6 +819,7 @@ def add_form_data(
     data,
     changed_by,
     changed_at,
+    copied_from=None,
 ):
     """
     Add form data and associated metadata to the form master user
@@ -773,22 +828,24 @@ def add_form_data(
     # TODO Check and assert that the object exists
     # qs = conn.getQueryService()
 
-    namespace = "hms.harvard.edu/omero/forms/data/%s/%s/%s" % (
+    namespace = "%s%s/%s/%s" % (
+        FORM_DATA_NAMESPACE_PREFIX,
         obj_type,
         obj_id,
         form_id,
     )
 
-    json_data = json.dumps(
-        {
-            "formId": form_id,
-            "formTimestamp": form_timestamp,
-            "formData": data,
-            "changedBy": changed_by,
-            "changedAt": changed_at.isoformat(),
-            "message": message,
-        }
-    )
+    stored_data = {
+        "formId": form_id,
+        "formTimestamp": form_timestamp,
+        "formData": data,
+        "changedBy": changed_by,
+        "changedAt": changed_at.isoformat(),
+        "message": message,
+    }
+    if copied_from is not None:
+        stored_data["copiedFrom"] = copied_from
+    json_data = json.dumps(stored_data)
 
     # If the appropriate annotation already exists, update it
     anno = _get_form_data(conn, master_user_id, form_id, obj_type, obj_id)
@@ -824,6 +881,25 @@ def add_form_data(
         update.saveObject(link, conn.SERVICE_OPTS)
 
 
+def _get_form_data_annotation_history(annotation):
+    """Decode one submission annotation into newest-first history entries."""
+    entries = [(kv.name, kv.value) for kv in annotation.getMapValue()]
+    for data_timestamp, payload in iter_payload_entries(entries):
+        loaded_data = json.loads(payload)
+        entry = {
+            "formId": loaded_data["formId"],
+            "formTimestamp": loaded_data["formTimestamp"],
+            "formData": loaded_data["formData"],
+            "changedBy": loaded_data["changedBy"],
+            "changedAt": datetime.fromisoformat(loaded_data["changedAt"]),
+            "dataTimestamp": data_timestamp,
+            "message": loaded_data["message"],
+        }
+        if isinstance(loaded_data.get("copiedFrom"), dict):
+            entry["copiedFrom"] = loaded_data["copiedFrom"]
+        yield entry
+
+
 def get_form_data_history(conn, master_user_id, form_id, obj_type, obj_id):
     """
     Get the form data (including history) for the specified form on the
@@ -833,22 +909,130 @@ def get_form_data_history(conn, master_user_id, form_id, obj_type, obj_id):
     anno = _get_form_data(conn, master_user_id, form_id, obj_type, obj_id)
 
     if anno is not None:
-        entries = [(kv.name, kv.value) for kv in anno.getMapValue()]
-        for _changed_at, payload in iter_payload_entries(entries):
-            loaded_data = json.loads(payload)
-            yield {
-                "formId": loaded_data["formId"],
-                "formTimestamp": loaded_data["formTimestamp"],
-                "formData": loaded_data["formData"],
-                "changedBy": loaded_data["changedBy"],
-                "changedAt": datetime.strptime(
-                    loaded_data["changedAt"], "%Y-%m-%dT%H:%M:%S.%f"
-                ),
-                "message": loaded_data["message"],
-            }
+        for entry in _get_form_data_annotation_history(anno):
+            yield entry
 
     else:
         return
+
+
+def list_form_reuse_candidates(
+    conn,
+    user_conn,
+    master_user_id,
+    form_id,
+    exclude_obj_type=None,
+    exclude_obj_id=None,
+):
+    """List the latest saved value on each other readable OMERO object."""
+    candidates = {}
+    for parsed, annotation in _find_form_data_annotations(
+        conn, master_user_id, form_id
+    ):
+        obj_type, obj_id, _stored_form_id = parsed
+        if obj_type == exclude_obj_type and obj_id == exclude_obj_id:
+            continue
+
+        obj = user_conn.getObject(obj_type, obj_id)
+        if obj is None:
+            continue
+
+        try:
+            latest = next(_get_form_data_annotation_history(annotation), None)
+        except (KeyError, TypeError, ValueError):
+            # One corrupt historical object must not hide every valid source.
+            continue
+        if latest is None:
+            continue
+
+        candidate = {
+            "sourceFormId": form_id,
+            "sourceFormTimestamp": latest["formTimestamp"],
+            "sourceObjectType": obj_type,
+            "sourceObjectId": obj_id,
+            "sourceObjectName": obj.getName(),
+            "sourceDataTimestamp": latest["dataTimestamp"],
+            "changedAt": latest["changedAt"].isoformat(),
+            "changedBy": latest["changedBy"],
+            "message": latest["message"],
+        }
+        object_key = (obj_type, obj_id)
+        existing = candidates.get(object_key)
+        if existing is None or candidate["changedAt"] > existing["changedAt"]:
+            candidates[object_key] = candidate
+
+    return sorted(
+        candidates.values(), key=lambda item: item["changedAt"], reverse=True
+    )
+
+
+def resolve_reuse_provenance(
+    conn, user_conn, master_user_id, target_form_id, copied_from
+):
+    """Validate and normalize a client-supplied reuse source reference."""
+    if copied_from is None:
+        return None
+    if not isinstance(copied_from, dict):
+        raise ValueError("copiedFrom must be an object")
+
+    required = {
+        "sourceFormId",
+        "sourceFormTimestamp",
+        "sourceObjectType",
+        "sourceObjectId",
+        "sourceDataTimestamp",
+    }
+    if not required.issubset(copied_from):
+        raise ValueError("copiedFrom is missing required source fields")
+
+    source_form_id = copied_from["sourceFormId"]
+    source_form_timestamp = copied_from["sourceFormTimestamp"]
+    source_obj_type = copied_from["sourceObjectType"]
+    source_data_timestamp = copied_from["sourceDataTimestamp"]
+    try:
+        if isinstance(copied_from["sourceObjectId"], bool):
+            raise ValueError
+        source_obj_id = int(copied_from["sourceObjectId"])
+    except (TypeError, ValueError):
+        raise ValueError("copiedFrom sourceObjectId must be an integer")
+
+    if source_form_id != target_form_id:
+        raise ValueError("Cross-form reuse is not supported yet")
+    if source_obj_type not in FORM_DATA_OBJECT_TYPES:
+        raise ValueError("copiedFrom has an invalid source object type")
+    if not isinstance(source_form_timestamp, str) or not source_form_timestamp:
+        raise ValueError("copiedFrom has an invalid source form timestamp")
+    if not isinstance(source_data_timestamp, str) or not source_data_timestamp:
+        raise ValueError("copiedFrom has an invalid source data timestamp")
+    if user_conn.getObject(source_obj_type, source_obj_id) is None:
+        raise ValueError("Reuse source is not readable by this user")
+
+    matching_entry = next(
+        (
+            entry
+            for entry in get_form_data_history(
+                conn,
+                master_user_id,
+                source_form_id,
+                source_obj_type,
+                source_obj_id,
+            )
+            if entry["dataTimestamp"] == source_data_timestamp
+        ),
+        None,
+    )
+    if matching_entry is None:
+        raise ValueError("Reuse source submission no longer exists")
+    if matching_entry["formTimestamp"] != source_form_timestamp:
+        raise ValueError("Reuse source form version does not match")
+
+    return {
+        "sourceFormId": source_form_id,
+        "sourceFormTimestamp": source_form_timestamp,
+        "sourceObjectType": source_obj_type,
+        "sourceObjectId": source_obj_id,
+        "sourceDataTimestamp": source_data_timestamp,
+    }
 
 
 def get_form_data(conn, master_user_id, form_id, obj_type, obj_id):
