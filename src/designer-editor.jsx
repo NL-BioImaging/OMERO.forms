@@ -10,6 +10,7 @@ import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
+const { editorDocumentKey, nextEditorRevision } = require('./editor-document-key');
 
 // Helper function to convert GitHub URLs to raw content URLs
 const convertGitHubUrl = (url) => {
@@ -214,6 +215,7 @@ export default class Editor extends React.Component {
       nameEdit: false,
       urlToLoad: '', 
       urlLoadError: null,
+      editorRevision: 0,
       previousFormId: undefined,
       previousSchema: undefined,
       previousUISchema: undefined,
@@ -254,7 +256,7 @@ export default class Editor extends React.Component {
             // Extract URL from message if it exists
             const urlToLoad = extractUrlFromMessage(form.message);
             
-            this.setState({
+            this.setState(prevState => ({
                 timestamp: form.timestamp,
                 schema,
                 uiSchema,
@@ -268,22 +270,24 @@ export default class Editor extends React.Component {
                 previousUISchema: uiSchema,
                 previousFormTypes: form.objTypes,
                 urlToLoad,  // Set URL field based on message
-                urlLoadError: null  // Clear any previous errors
-            });
+                urlLoadError: null,  // Clear any previous errors
+                editorRevision: nextEditorRevision(prevState.editorRevision)
+            }));
         });
   }
 
   selectForm(selection) {
     // Early return if nothing selected
     if (!selection) {
-        this.setState({
+        this.setState(prevState => ({
             formId: '',
             message: '',
             schema: defaultData.schema,
             uiSchema: defaultData.uiSchema,
             formTypes: [],
-            urlToLoad: ''  // Clear URL field when resetting
-        });
+            urlToLoad: '',  // Clear URL field when resetting
+            editorRevision: nextEditorRevision(prevState.editorRevision)
+        }));
         return;
     }
 
@@ -389,7 +393,8 @@ export default class Editor extends React.Component {
               `Loaded version ${data.version || 'unknown'} from ${url}` : 
               prevState.message,
             urlToLoad: url,
-            urlLoadError: null
+            urlLoadError: null,
+            editorRevision: nextEditorRevision(prevState.editorRevision)
           };
         });
 
@@ -469,6 +474,7 @@ export default class Editor extends React.Component {
       nameEdit,
       urlToLoad,
       urlLoadError,
+      editorRevision,
       previousSchema,
       previousUISchema,
       previousFormTypes
@@ -633,16 +639,19 @@ export default class Editor extends React.Component {
 
             </div>
 
-            <CodeEditor title='JSONSchema' theme={editor} code={toJson(schema)}
+            <CodeEditor key={editorDocumentKey(editorRevision, 'schema')}
+              title='JSONSchema' theme={editor} code={toJson(schema)}
               onChange={this.onSchemaEdited} />
 
             <div className='row'>
               <div className='col-sm-6'>
-                <CodeEditor title='UISchema' theme={editor} code={toJson(uiSchema)}
+                <CodeEditor key={editorDocumentKey(editorRevision, 'uiSchema')}
+                  title='UISchema' theme={editor} code={toJson(uiSchema)}
                   onChange={this.onUISchemaEdited} />
               </div>
               <div className='col-sm-6'>
-                <CodeEditor title='formData' theme={editor} code={toJson(formData)}
+                <CodeEditor key={editorDocumentKey(editorRevision, 'formData')}
+                  title='formData' theme={editor} code={toJson(formData)}
                   onChange={this.onFormDataEdited} />
               </div>
             </div>
