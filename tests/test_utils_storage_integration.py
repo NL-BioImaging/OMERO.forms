@@ -165,15 +165,46 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
         self.assertEqual(latest["sourceUrl"], "")
 
     def test_legacy_load_message_backfills_source_url(self):
-        timestamp = "2026-08-26T12:00:00.123456"
+        latest_timestamp = "2026-08-26T12:00:00.123456"
+        older_timestamp = "2026-08-25T12:00:00.123456"
         source_url = "https://example.org/forms/schema.json"
-        payload = json.loads(self._form_payload("{}", timestamp))
-        payload["message"] = "Loaded version v1.0.0 from %s" % source_url
+        latest_payload = self._form_payload("{}", latest_timestamp)
+        older_payload = json.loads(self._form_payload("{}", older_timestamp))
+        older_payload["message"] = "Loaded version v1.0.0 from %s" % source_url
         annotation = FakeAnnotation(
             [
-                (timestamp, json.dumps(payload)),
+                (latest_timestamp, latest_payload),
                 ("id", "test-form"),
                 ("owner", "7"),
+                (older_timestamp, json.dumps(older_payload)),
+            ]
+        )
+
+        with mock.patch.object(utils, "_get_form", return_value=annotation):
+            versions = utils.get_form_versions(None, None, "test-form")
+            version = utils.get_form_version(
+                None, FakeUserConnection(), None, "test-form"
+            )
+
+        self.assertEqual(version["sourceUrl"], source_url)
+        self.assertEqual(versions[0]["sourceUrl"], source_url)
+        self.assertEqual(versions[1]["sourceUrl"], source_url)
+
+    def test_explicit_empty_source_url_stops_legacy_inheritance(self):
+        latest_timestamp = "2026-08-26T12:00:00.123456"
+        older_timestamp = "2026-08-25T12:00:00.123456"
+        latest_payload = json.loads(self._form_payload("{}", latest_timestamp))
+        latest_payload["sourceUrl"] = ""
+        older_payload = json.loads(self._form_payload("{}", older_timestamp))
+        older_payload["message"] = (
+            "Loaded version v1.0.0 from https://example.org/forms/schema.json"
+        )
+        annotation = FakeAnnotation(
+            [
+                (latest_timestamp, json.dumps(latest_payload)),
+                ("id", "test-form"),
+                ("owner", "7"),
+                (older_timestamp, json.dumps(older_payload)),
             ]
         )
 
@@ -182,7 +213,7 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
                 None, FakeUserConnection(), None, "test-form"
             )
 
-        self.assertEqual(version["sourceUrl"], source_url)
+        self.assertEqual(version["sourceUrl"], "")
 
     def test_older_client_inherits_existing_source_url(self):
         existing = {"sourceUrl": "https://example.org/forms/schema.json"}

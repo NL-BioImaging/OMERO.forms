@@ -15,17 +15,49 @@ from .storage_codec import encode_payload, iter_payload_entries
 SOURCE_URL_MESSAGE_PATTERN = re.compile(r"from (https://\S+)$")
 
 
-def _normalise_form_version(data):
+def _declared_source_url(data):
+    """Return a version's declared source URL, or None when it has none."""
+    if "sourceUrl" in data:
+        return data["sourceUrl"] if isinstance(data["sourceUrl"], str) else ""
+
+    message = data.get("message", "")
+    match = (
+        SOURCE_URL_MESSAGE_PATTERN.search(message)
+        if isinstance(message, str)
+        else None
+    )
+    return match.group(1) if match else None
+
+
+def _normalise_form_version(data, inherited_source_url=""):
     """Add fields introduced after legacy form versions were stored."""
-    if "sourceUrl" not in data:
-        message = data.get("message", "")
-        match = (
-            SOURCE_URL_MESSAGE_PATTERN.search(message)
-            if isinstance(message, str)
-            else None
+    declared_source_url = _declared_source_url(data)
+    if "sourceUrl" not in data or not isinstance(data["sourceUrl"], str):
+        data["sourceUrl"] = (
+            declared_source_url
+            if declared_source_url is not None
+            else inherited_source_url
         )
-        data["sourceUrl"] = match.group(1) if match else ""
     return data
+
+
+def _decode_form_versions(entries):
+    """Decode versions newest-first and carry legacy provenance forward."""
+    versions = [
+        (timestamp, json.loads(payload))
+        for timestamp, payload in iter_payload_entries(
+            entries, reserved_names=["id", "owner", "objType"]
+        )
+    ]
+
+    inherited_source_url = ""
+    for _timestamp, data in reversed(versions):
+        declared_source_url = _declared_source_url(data)
+        if declared_source_url is not None:
+            inherited_source_url = declared_source_url
+        _normalise_form_version(data, inherited_source_url)
+
+    return versions
 
 
 def resolve_source_url(source_url, existing_form=None):
@@ -380,15 +412,8 @@ def get_form_versions(conn, master_user_id, form_id):
     if anno is None:
         return None
 
-    _form_versions = []
-
     entries = [(kv.name, kv.value) for kv in anno.getMapValue()]
-    for _timestamp, payload in iter_payload_entries(
-        entries, reserved_names=["id", "owner", "objType"]
-    ):
-        _form_versions.append(_normalise_form_version(json.loads(payload)))
-
-    return _form_versions
+    return [data for _timestamp, data in _decode_form_versions(entries)]
 
 
 def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
@@ -404,7 +429,7 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
     _id = None
     _owners = []
     _obj_types = []
-    _json_data = None
+    _form_version = None
 
     kvs = anno.getMapValue()
     for kv in kvs:
@@ -419,14 +444,24 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
     for stored_timestamp, payload in iter_payload_entries(
         entries, reserved_names=["id", "owner", "objType"]
     ):
-        if timestamp is not None and stored_timestamp == timestamp:
-            _json_data = payload
-            break
-        if timestamp is None:
-            _json_data = payload
+        data = json.loads(payload)
+
+        if _form_version is None:
+            if timestamp is not None and stored_timestamp != timestamp:
+                continue
+            _form_version = data
+            declared_source_url = _declared_source_url(data)
+            if declared_source_url is not None:
+                _normalise_form_version(data, declared_source_url)
+                break
+            continue
+
+        inherited_source_url = _declared_source_url(data)
+        if inherited_source_url is not None:
+            _normalise_form_version(_form_version, inherited_source_url)
             break
 
-    d = _normalise_form_version(json.loads(_json_data))
+    d = _normalise_form_version(_form_version)
 
     return {
         "id": _id,
