@@ -13,8 +13,7 @@ omero_su.cfg
 */_version.py
 omero_forms/static/*
 
-# Node dependencies and lock files
+# Node dependencies and unused Yarn lock file
 node_modules/
 yarn.lock
-package-lock.json
 .venv-build

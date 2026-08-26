@@ -1,5 +1,6 @@
 from django.urls import re_path
 from . import views
+from .routing import FORM_ID_PATTERN
 
 urlpatterns = [
     # Designer App
@@ -16,11 +17,16 @@ urlpatterns = [
         name="omeroforms_list_applicable_forms",
     ),
     # Get a form (latest version)
-    re_path(r"^get_form/(?P<form_id>[\w ]+)/$", views.get_form, name="omeroforms_get_form"),
+    re_path(
+        r"^get_form/(?P<form_id>%s)/$" % FORM_ID_PATTERN,
+        views.get_form,
+        name="omeroforms_get_form",
+    ),
     # Get data for a form (latest version) for a certain object
     re_path(
         r"^get_form_data/"
-        r"(?P<form_id>[\w ]+)/(?P<obj_type>\w+)/(?P<obj_id>[\w ]+)/$",
+        r"(?P<form_id>%s)/(?P<obj_type>\w+)/(?P<obj_id>[\w ]+)/$"
+        % FORM_ID_PATTERN,
         views.get_form_data,
         name="omeroforms_get_form_data",
     ),
@@ -34,9 +40,18 @@ urlpatterns = [
     # to enter that data
     re_path(
         r"^get_form_data_history/"
-        r"(?P<form_id>[\w ]+)/(?P<obj_type>\w+)/(?P<obj_id>[\w ]+)/$",
+        r"(?P<form_id>%s)/(?P<obj_type>\w+)/(?P<obj_id>[\w ]+)/$"
+        % FORM_ID_PATTERN,
         views.get_form_data_history,
         name="omeroforms_get_form_data_history",
+    ),
+    # List the latest saved values for this form on other readable objects
+    re_path(
+        r"^list_form_reuse_candidates/"
+        r"(?P<form_id>%s)/(?P<obj_type>\w+)/(?P<obj_id>[0-9]+)/$"
+        % FORM_ID_PATTERN,
+        views.list_form_reuse_candidates,
+        name="omeroforms_list_form_reuse_candidates",
     ),
     # Get groups that the user can manage
     re_path(
@@ -48,7 +63,7 @@ urlpatterns = [
     re_path(r"^get_users/$", views.get_users, name="omeroforms_get_users"),
     # Check form id ownership
     re_path(
-        r"^get_formid_editable/(?P<form_id>[\w ]+)/$",
+        r"^get_formid_editable/(?P<form_id>%s)/$" % FORM_ID_PATTERN,
         views.get_formid_editable,
         name="omeroforms_get_formid_editable",
     ),
@@ -57,7 +72,8 @@ urlpatterns = [
     # Save data for a form
     re_path(
         r"^save_form_data/"
-        r"(?P<form_id>[\w ]+)/(?P<obj_type>\w+)/(?P<obj_id>[\w ]+)/$",
+        r"(?P<form_id>%s)/(?P<obj_type>\w+)/(?P<obj_id>[\w ]+)/$"
+        % FORM_ID_PATTERN,
         views.save_form_data,
         name="omeroforms_save_form_data",
     ),
@@ -66,5 +82,11 @@ urlpatterns = [
         r"^save_form_assignment/$",
         views.save_form_assignment,
         name="omeroforms_save_form_assignment",
+    ),
+    # Save all form assignments for one managed group
+    re_path(
+        r"^save_group_form_assignments/$",
+        views.save_group_form_assignments,
+        name="omeroforms_save_group_form_assignments",
     ),
 ]

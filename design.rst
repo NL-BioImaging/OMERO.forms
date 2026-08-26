@@ -33,6 +33,12 @@ Form versioning and submissions
 OMERO.forms records every form design revision in the immutable metadata store. Metadata entered and edited through forms is also recorded in the immutable metadata store and is associated with the form version with which it was submitted to put it in the correct context. The record of each form revision or submission also incorporates the identity of the editor, timestamp and an optional change message explaining the changes that have been made. Previous metadata submissions are not overwritten upon edit and the chronology of these represents the history of that form metadata.
 
 
+Large payload storage
+=====================
+
+Small form definitions and submissions are stored in the original inline JSON format. Larger JSON payloads are compressed with zlib, Base64 encoded and divided over multiple safe-sized map annotation values. The timestamp entry contains a versioned manifest that identifies the chunks and records the original byte length and SHA-256 checksum. Readers reassemble chunks by their numbered keys, independently of row order, and reject incomplete or corrupted payloads. This application-level representation avoids changes to the OMERO database schema while remaining backward compatible with existing inline form and submission history.
+
+
 OMERO.web plugin
 ================
 

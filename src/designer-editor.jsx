@@ -10,22 +10,17 @@ import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
-
-// Helper function to convert GitHub URLs to raw content URLs
-const convertGitHubUrl = (url) => {
-  if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
-    return url.replace('github.com', 'raw.githubusercontent.com')
-               .replace('/blob/', '/');
-  }
-  return url;
-};
-
-// Helper function to extract URL from a message
-const extractUrlFromMessage = (message) => {
-  if (!message) return '';
-  const match = message.match(/from (https:\/\/[^\s]+)$/);
-  return match ? match[1] : '';
-};
+import {
+  editorDocumentKey,
+  nextEditorRevision,
+} from './editor-document-key.mjs';
+import {loadFormPackageFromUrl} from './form-url-loader.mjs';
+import {buildApiUrl, fetchJson} from './api-client.mjs';
+import {sourceUrlFromFormVersion} from './form-source-url.mjs';
+import {
+  canSaveForm,
+  hasApplicableObjectType,
+} from './form-validation.mjs';
 
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
@@ -214,6 +209,7 @@ export default class Editor extends React.Component {
       nameEdit: false,
       urlToLoad: '', 
       urlLoadError: null,
+      editorRevision: 0,
       previousFormId: undefined,
       previousSchema: undefined,
       previousUISchema: undefined,
@@ -238,23 +234,22 @@ export default class Editor extends React.Component {
   loadForm(formId) {
     const { urls } = this.props;
     const formRequest = new Request(
-      `${ urls.base }get_form/${ formId }/`,
+      buildApiUrl(urls.base, 'get_form', formId),
       {
         credentials: 'same-origin'
       }
     );
 
-    fetch(formRequest)
-        .then(response => response.json())
+    fetchJson(formRequest)
         .then(jsonData => {
             const form = jsonData.form;
             const schema = JSON.parse(form.schema);
             const uiSchema = JSON.parse(form.uiSchema);
             
             // Extract URL from message if it exists
-            const urlToLoad = extractUrlFromMessage(form.message);
+            const urlToLoad = sourceUrlFromFormVersion(form);
             
-            this.setState({
+            this.setState(prevState => ({
                 timestamp: form.timestamp,
                 schema,
                 uiSchema,
@@ -268,22 +263,30 @@ export default class Editor extends React.Component {
                 previousUISchema: uiSchema,
                 previousFormTypes: form.objTypes,
                 urlToLoad,  // Set URL field based on message
-                urlLoadError: null  // Clear any previous errors
-            });
+                urlLoadError: null,  // Clear any previous errors
+                editorRevision: nextEditorRevision(prevState.editorRevision)
+            }));
+        })
+        .catch(error => {
+          console.error('Error loading form:', error);
+          this.setState({
+            urlLoadError: `Failed to load form: ${error.message}`
+          });
         });
   }
 
   selectForm(selection) {
     // Early return if nothing selected
     if (!selection) {
-        this.setState({
+        this.setState(prevState => ({
             formId: '',
             message: '',
             schema: defaultData.schema,
             uiSchema: defaultData.uiSchema,
             formTypes: [],
-            urlToLoad: ''  // Clear URL field when resetting
-        });
+            urlToLoad: '',  // Clear URL field when resetting
+            editorRevision: nextEditorRevision(prevState.editorRevision)
+        }));
         return;
     }
 
@@ -309,7 +312,14 @@ export default class Editor extends React.Component {
   }
 
   saveForm() {
-    const { formId, schema, uiSchema, formTypes, message } = this.state;
+    const {
+      formId,
+      schema,
+      uiSchema,
+      formTypes,
+      message,
+      urlToLoad,
+    } = this.state;
     const { forms, updateForm, urls } = this.props;
 
     const request = new Request(
@@ -321,15 +331,14 @@ export default class Editor extends React.Component {
           schema: JSON.stringify(schema),
           uiSchema: JSON.stringify(uiSchema),
           message,
-          objTypes: formTypes
+          objTypes: formTypes,
+          sourceUrl: urlToLoad || ''
         }),
         credentials: 'same-origin'
       }
     );
 
-    fetch(request).then(
-      response => response.json()
-    ).then(
+    fetchJson(request).then(
       jsonData => {
         updateForm(jsonData.form)
         this.setState({
@@ -339,7 +348,12 @@ export default class Editor extends React.Component {
           previousFormTypes: formTypes
         });
       }
-    );
+    ).catch(error => {
+      console.error('Error saving form:', error);
+      this.setState({
+        urlLoadError: `Failed to save form: ${error.message}`
+      });
+    });
 
   }
 
@@ -366,30 +380,25 @@ export default class Editor extends React.Component {
   }
 
   loadFromUrl(url) {
-    const rawUrl = convertGitHubUrl(url);
-    
-    fetch(rawUrl)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        const formId = data.title || '';
+    loadFormPackageFromUrl(url)
+      .then(({schema, uiSchema, uiSchemaWarning}) => {
+        const formId = schema.title || '';
         
         // Update the state but preserve message if schema hasn't changed
         this.setState(prevState => {
-          const isSchemaChanged = JSON.stringify(data) !== JSON.stringify(prevState.previousSchema);
+          const isSchemaChanged = JSON.stringify(schema) !== JSON.stringify(prevState.previousSchema);
           
           return {
-            schema: data,
+            schema,
+            uiSchema,
+            formData: {},
             formId: formId,
-            message: isSchemaChanged ? 
-              `Loaded version ${data.version || 'unknown'} from ${url}` : 
+            message: isSchemaChanged ?
+              `Loaded version ${schema.version || 'unknown'} from ${url}` :
               prevState.message,
             urlToLoad: url,
-            urlLoadError: null
+            urlLoadError: uiSchemaWarning,
+            editorRevision: nextEditorRevision(prevState.editorRevision)
           };
         });
 
@@ -416,19 +425,24 @@ export default class Editor extends React.Component {
     }
 
     const request = new Request(
-      `${urls.base}get_formid_editable/${name}`,
+      buildApiUrl(urls.base, 'get_formid_editable', name),
       {
         credentials: 'same-origin'
       }
     );
 
-    fetch(request)
-      .then(response => response.json())
+    fetchJson(request)
       .then(jsonData => {
         this.setState({
           editable: jsonData.editable,
           owners: jsonData.owners,
           exists: jsonData.exists
+        });
+      })
+      .catch(error => {
+        console.error('Error validating form name:', error);
+        this.setState({
+          urlLoadError: `Failed to validate form name: ${error.message}`
         });
       });
   }
@@ -469,6 +483,7 @@ export default class Editor extends React.Component {
       nameEdit,
       urlToLoad,
       urlLoadError,
+      editorRevision,
       previousSchema,
       previousUISchema,
       previousFormTypes
@@ -500,6 +515,10 @@ export default class Editor extends React.Component {
       editStatus = (
         <div className='alert alert-danger form-small-alert'><strong>Form name is owned by someone else</strong></div>
       );
+    } else if (!hasApplicableObjectType(formTypes)) {
+      editStatus = (
+        <div className='alert alert-warning form-small-alert'><strong>Select at least one applicable object type before saving</strong></div>
+      );
     }
 
 
@@ -526,7 +545,12 @@ export default class Editor extends React.Component {
                     type='button'
                     className='btn btn-info'
                     onClick={ this.saveForm }
-                    disabled={ !formId || !unsaved || !editable }
+                    disabled={ !canSaveForm({
+                      formId,
+                      unsaved,
+                      editable,
+                      formTypes
+                    }) }
                   >
                     Save
                     { unsaved && <span className="badge">*</span> }
@@ -633,16 +657,19 @@ export default class Editor extends React.Component {
 
             </div>
 
-            <CodeEditor title='JSONSchema' theme={editor} code={toJson(schema)}
+            <CodeEditor key={editorDocumentKey(editorRevision, 'schema')}
+              title='JSONSchema' theme={editor} code={toJson(schema)}
               onChange={this.onSchemaEdited} />
 
             <div className='row'>
               <div className='col-sm-6'>
-                <CodeEditor title='UISchema' theme={editor} code={toJson(uiSchema)}
+                <CodeEditor key={editorDocumentKey(editorRevision, 'uiSchema')}
+                  title='UISchema' theme={editor} code={toJson(uiSchema)}
                   onChange={this.onUISchemaEdited} />
               </div>
               <div className='col-sm-6'>
-                <CodeEditor title='formData' theme={editor} code={toJson(formData)}
+                <CodeEditor key={editorDocumentKey(editorRevision, 'formData')}
+                  title='formData' theme={editor} code={toJson(formData)}
                   onChange={this.onFormDataEdited} />
               </div>
             </div>

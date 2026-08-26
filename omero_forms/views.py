@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 from . import settings
 from . import utils
+from .form_validation import validate_object_types
 
 OMERO_FORMS_PRIV_UID = None
 
@@ -298,6 +299,45 @@ def get_form_data_history(
 
 @login_required(setGroupContext=True)
 @with_su
+def list_form_reuse_candidates(
+    request,
+    form_id,
+    obj_type,
+    obj_id,
+    conn=None,
+    su_conn=None,
+    form_master=None,
+    **kwargs
+):
+    if request.method != "GET":
+        return HttpResponseNotAllowed("Methods allowed: GET")
+
+    if obj_type not in ["Project", "Dataset", "Plate", "Screen"]:
+        return HttpResponseBadRequest("%s not a valid obj_type" % obj_type)
+
+    try:
+        obj_id = int(obj_id)
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("Object ID must be a long integer")
+
+    if conn.getObject(obj_type, obj_id) is None:
+        raise Http404(
+            "If this object exists, this user does not have permission to read it"
+        )
+
+    candidates = utils.list_form_reuse_candidates(
+        su_conn,
+        conn,
+        form_master,
+        form_id,
+        exclude_obj_type=obj_type,
+        exclude_obj_id=obj_id,
+    )
+    return JsonResponse({"candidates": candidates})
+
+
+@login_required(setGroupContext=True)
+@with_su
 def get_formid_editable(
     request, form_id, conn=None, su_conn=None, form_master=None, **kwargs
 ):
@@ -334,6 +374,7 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
     ui_schema = data.get("uiSchema", "")
     message = data.get("message", "")
     obj_types = data.get("objTypes", [])
+    source_url = data.get("sourceUrl")
 
     # Ensure there is at least a formId
     if form_id is None:
@@ -358,10 +399,17 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
         if user_id not in existing_form["owners"] and admin is not True:
             return HttpResponseUnauthorized("Updating a form requires ownership")
 
-    # Ensure the object type is valid
-    for obj_type in obj_types:
-        if obj_type not in ["Project", "Dataset", "Screen", "Plate"]:
-            return HttpResponseBadRequest("%s not a valid obj_type" % obj_type)
+    # Older clients do not send sourceUrl. Preserve the latest value instead
+    # of silently dropping provenance when they create another version.
+    try:
+        source_url = utils.resolve_source_url(source_url, existing_form)
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
+
+    try:
+        obj_types = validate_object_types(obj_types)
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
 
     form_version = utils.add_form_version(
         su_conn,
@@ -373,6 +421,7 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
         datetime.now(),
         message,
         obj_types,
+        source_url,
     )
 
     return JsonResponse({"form": form_version})
@@ -406,6 +455,7 @@ def save_form_data(
     form_timestamp = update_data["formTimestamp"]
     form_data = update_data["data"]
     message = update_data["message"]
+    copied_from = update_data.get("copiedFrom")
     changed_at = datetime.now()
     changed_by = conn.user.getId()
 
@@ -425,6 +475,13 @@ def save_form_data(
             "This user does not have permission " "to submit data to this form"
         )
 
+    try:
+        copied_from = utils.resolve_reuse_provenance(
+            su_conn, conn, form_master, form_id, copied_from
+        )
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
+
     utils.add_form_data(
         su_conn,
         form_master,
@@ -436,6 +493,7 @@ def save_form_data(
         form_data,
         changed_by,
         changed_at,
+        copied_from=copied_from,
     )
 
     utils.add_form_data_to_obj(su_conn, conn, form_id, obj_type, obj_id, form_data)
@@ -470,18 +528,16 @@ def save_form_assignment(request, conn=None, su_conn=None, form_master=None, **k
         )
 
     # Get the existing assignments
-    current = set(utils.get_form_assignments(su_conn, form_master, form_id))
-    requested = set(group_ids)
-    owned = set([g["id"] for g in utils.get_managed_groups(conn)])
-
-    to_add = requested - current
-    to_remove = (owned - requested) & current
+    current = utils.get_form_assignments(su_conn, form_master, form_id)
+    owned = [g["id"] for g in utils.get_managed_groups(conn)]
+    to_add, to_remove, disallowed_groups = utils.calculate_assignment_changes(
+        current, group_ids, owned
+    )
 
     # Disallow assigning groups that the user does not have permissions on
-    disallowed_groups = list((requested - owned))
     if len(disallowed_groups) > 0:
         return HttpResponseUnauthorized(
-            "Can not assign to groups: %s" % disallowed_groups
+            "Can not assign to groups: %s" % list(disallowed_groups)
         )
 
     if len(to_add) > 0 or len(to_remove) > 0:
@@ -489,6 +545,63 @@ def save_form_assignment(request, conn=None, su_conn=None, form_master=None, **k
 
     # TODO Copy of get_form_assignments, refactor
     managed_group_ids = [group["id"] for group in utils.get_managed_groups(conn)]
+
+    return JsonResponse(
+        {
+            "assignments": utils.get_group_assignments(
+                su_conn, form_master, managed_group_ids
+            )
+        }
+    )
+
+
+@login_required(setGroupContext=True)
+@with_su
+@csrf_exempt
+def save_group_form_assignments(
+    request, conn=None, su_conn=None, form_master=None, **kwargs
+):
+    if request.method != "POST":
+        return HttpResponseNotAllowed("Methods allowed: POST")
+
+    data = json.loads(request.body)
+    try:
+        group_id = int(data["groupId"])
+    except (KeyError, TypeError, ValueError):
+        return HttpResponseBadRequest("groupId must be an integer")
+
+    form_ids = data.get("formIds")
+    if not isinstance(form_ids, list) or any(
+        not isinstance(form_id, str) or len(form_id.strip()) == 0
+        for form_id in form_ids
+    ):
+        return HttpResponseBadRequest("formIds must be a list of form names")
+    requested = {form_id.strip() for form_id in form_ids}
+
+    managed_group_ids = [group["id"] for group in utils.get_managed_groups(conn)]
+    if group_id not in managed_group_ids:
+        return HttpResponseUnauthorized(
+            "Can not update assignments for group: %s" % group_id
+        )
+
+    known_form_ids = {
+        form["id"] for form in utils.list_forms(su_conn, form_master)
+    }
+    unknown_form_ids = requested - known_form_ids
+    if unknown_form_ids:
+        return HttpResponseBadRequest(
+            "Unknown form(s): %s" % sorted(unknown_form_ids)
+        )
+
+    current = utils.get_group_assignments(
+        su_conn, form_master, [group_id]
+    ).get(group_id, [])
+    to_add, to_remove = utils.calculate_group_form_changes(current, requested)
+
+    for form_id in sorted(to_add):
+        utils.assign_form(su_conn, form_master, form_id, [group_id], [])
+    for form_id in sorted(to_remove):
+        utils.assign_form(su_conn, form_master, form_id, [], [group_id])
 
     return JsonResponse(
         {

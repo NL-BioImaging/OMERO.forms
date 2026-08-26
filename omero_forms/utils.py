@@ -9,6 +9,67 @@ from datetime import datetime
 import re
 from copy import deepcopy
 
+from .storage_codec import encode_payload, iter_payload_entries
+
+
+SOURCE_URL_MESSAGE_PATTERN = re.compile(r"from (https://\S+)$")
+FORM_DATA_NAMESPACE_PREFIX = "hms.harvard.edu/omero/forms/data/"
+FORM_DATA_OBJECT_TYPES = {"Project", "Dataset", "Plate", "Screen"}
+
+
+def _declared_source_url(data):
+    """Return a version's declared source URL, or None when it has none."""
+    if "sourceUrl" in data:
+        return data["sourceUrl"] if isinstance(data["sourceUrl"], str) else ""
+
+    message = data.get("message", "")
+    match = (
+        SOURCE_URL_MESSAGE_PATTERN.search(message)
+        if isinstance(message, str)
+        else None
+    )
+    return match.group(1) if match else None
+
+
+def _normalise_form_version(data, inherited_source_url=""):
+    """Add fields introduced after legacy form versions were stored."""
+    declared_source_url = _declared_source_url(data)
+    if "sourceUrl" not in data or not isinstance(data["sourceUrl"], str):
+        data["sourceUrl"] = (
+            declared_source_url
+            if declared_source_url is not None
+            else inherited_source_url
+        )
+    return data
+
+
+def _decode_form_versions(entries):
+    """Decode versions newest-first and carry legacy provenance forward."""
+    versions = [
+        (timestamp, json.loads(payload))
+        for timestamp, payload in iter_payload_entries(
+            entries, reserved_names=["id", "owner", "objType"]
+        )
+    ]
+
+    inherited_source_url = ""
+    for _timestamp, data in reversed(versions):
+        declared_source_url = _declared_source_url(data)
+        if declared_source_url is not None:
+            inherited_source_url = declared_source_url
+        _normalise_form_version(data, inherited_source_url)
+
+    return versions
+
+
+def resolve_source_url(source_url, existing_form=None):
+    """Validate sourceUrl and inherit it when an older client omits it."""
+    if source_url is None:
+        return existing_form.get("sourceUrl", "") if existing_form else ""
+    if not isinstance(source_url, str):
+        raise ValueError("sourceUrl must be a string")
+    return source_url
+
 
 class DatetimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -48,6 +109,7 @@ def add_form_version(
     timestamp,
     message,
     obj_types=[],
+    source_url="",
 ):
     """
     Add a form version to the form master user. Creates form wrapper if
@@ -71,6 +133,7 @@ def add_form_version(
             "author": author,
             "timestamp": timestamp.isoformat(),
             "message": message,
+            "sourceUrl": source_url,
         }
     )
 
@@ -94,8 +157,16 @@ def add_form_version(
         for obj_type in obj_types:
             new_kvs.append(omero.model.NamedValue("objType", obj_type))
 
-        # Add the new version
-        new_kvs.insert(0, omero.model.NamedValue(timestamp.isoformat(), json_data))
+        # Add the new version. Large payloads are represented by a manifest
+        # followed by safe-sized chunks; small payloads retain the legacy row.
+        payload_rows = encode_payload(
+            timestamp.isoformat(),
+            json_data,
+            existing_names=[kv.name for kv in new_kvs],
+        )
+        new_kvs[0:0] = [
+            omero.model.NamedValue(name, value) for name, value in payload_rows
+        ]
 
         kvs[:] = new_kvs
 
@@ -108,12 +179,11 @@ def add_form_version(
         mapAnn = omero.gateway.MapAnnotationWrapper(conn)
         mapAnn.setNs(namespace)
 
+        payload_rows = encode_payload(timestamp.isoformat(), json_data)
         mapAnn.setValue(
-            [
-                ["id", form_id],
-                [timestamp.isoformat(), json_data],
-                ["owner", str(author)],
-            ]
+            [["id", form_id]]
+            + [[name, value] for name, value in payload_rows]
+            + [["owner", str(author)]]
             + [["objType", obj_type] for obj_type in obj_types]
         )
         mapAnn.save()
@@ -133,6 +203,7 @@ def add_form_version(
         "author": author,
         "timestamp": timestamp,
         "message": message,
+        "sourceUrl": source_url,
         "objTypes": obj_types,
     }
 
@@ -343,18 +414,8 @@ def get_form_versions(conn, master_user_id, form_id):
     if anno is None:
         return None
 
-    _form_versions = []
-
-    kvs = anno.getMapValue()
-    # TODO Can these be indexed directly instead of iterating over all
-    # the keys looking for the ones we want
-    # At the least, we should iterate in reverse order if possible as
-    # these are likely at the bottom of the list as new items are prepended
-    for kv in kvs:
-        if kv.name not in ["id", "owner", "objType"]:
-            _form_versions.append(json.loads(kv.value))
-
-    return _form_versions
+    entries = [(kv.name, kv.value) for kv in anno.getMapValue()]
+    return [data for _timestamp, data in _decode_form_versions(entries)]
 
 
 def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
@@ -370,13 +431,9 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
     _id = None
     _owners = []
     _obj_types = []
-    _json_data = None
+    _form_version = None
 
     kvs = anno.getMapValue()
-    # TODO Can these be indexed directly instead of iterating over all
-    # the keys looking for the ones we want
-    # At the least, we should iterate in reverse order if possible as
-    # these are likely at the bottom of the list as new items are prepended
     for kv in kvs:
         if kv.name == "id":
             _id = kv.value
@@ -384,12 +441,29 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
             _owners.append(int(kv.value))
         elif kv.name == "objType":
             _obj_types.append(kv.value)
-        elif timestamp is not None and kv.name == timestamp:
-            _json_data = kv.value
-        elif timestamp is None and _json_data is None:
-            _json_data = kv.value
 
-    d = json.loads(_json_data)
+    entries = [(kv.name, kv.value) for kv in kvs]
+    for stored_timestamp, payload in iter_payload_entries(
+        entries, reserved_names=["id", "owner", "objType"]
+    ):
+        data = json.loads(payload)
+
+        if _form_version is None:
+            if timestamp is not None and stored_timestamp != timestamp:
+                continue
+            _form_version = data
+            declared_source_url = _declared_source_url(data)
+            if declared_source_url is not None:
+                _normalise_form_version(data, declared_source_url)
+                break
+            continue
+
+        inherited_source_url = _declared_source_url(data)
+        if inherited_source_url is not None:
+            _normalise_form_version(_form_version, inherited_source_url)
+            break
+
+    d = _normalise_form_version(_form_version)
 
     return {
         "id": _id,
@@ -398,6 +472,7 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
         "author": d["author"],
         "timestamp": d["timestamp"],
         "message": d["message"],
+        "sourceUrl": d["sourceUrl"],
         "objTypes": _obj_types,
         "owners": _owners,
         "editable": user_conn.isAdmin() or user_conn.getUserId() in _owners,
@@ -435,6 +510,28 @@ def get_form_assignments(conn, master_user_id, form_id):
                 if kv.name == "groupId":
                     group_ids.add(int(kv.value))
     return list(group_ids)
+
+
+def calculate_assignment_changes(
+    current_group_ids, requested_group_ids, owned_group_ids
+):
+    """Return additions, permitted removals, and disallowed additions."""
+    current = set(current_group_ids)
+    requested = set(requested_group_ids)
+    owned = set(owned_group_ids)
+
+    return (
+        requested - current,
+        (owned - requested) & current,
+        requested - owned,
+    )
+
+
+def calculate_group_form_changes(current_form_ids, requested_form_ids):
+    """Return form assignments to add and remove for one managed group."""
+    current = set(current_form_ids)
+    requested = set(requested_form_ids)
+    return requested - current, current - requested
 
 
 def delete_form(conn, master_user_id, form_id):
@@ -558,7 +655,8 @@ def _get_form_data(conn, master_user_id, form_id, obj_type, obj_id):
     Returns a MapAnnotationI object or None
     """
 
-    namespace = "hms.harvard.edu/omero/forms/data/%s/%s/%s" % (
+    namespace = "%s%s/%s/%s" % (
+        FORM_DATA_NAMESPACE_PREFIX,
         obj_type,
         obj_id,
         form_id,
@@ -585,6 +683,57 @@ def _get_form_data(conn, master_user_id, form_id, obj_type, obj_id):
         return None
 
     return rows[0][0].val
+
+
+def parse_form_data_namespace(namespace):
+    """Return (object type, object id, form id) for a data namespace."""
+    if not isinstance(namespace, str) or not namespace.startswith(
+        FORM_DATA_NAMESPACE_PREFIX
+    ):
+        return None
+
+    parts = namespace[len(FORM_DATA_NAMESPACE_PREFIX) :].split("/", 2)
+    if len(parts) != 3 or parts[0] not in FORM_DATA_OBJECT_TYPES:
+        return None
+
+    try:
+        object_id = int(parts[1])
+    except (TypeError, ValueError):
+        return None
+
+    if not parts[2]:
+        return None
+    return parts[0], object_id, parts[2]
+
+
+def _find_form_data_annotations(conn, master_user_id, form_id):
+    """Find centrally stored data annotations for one exact form id."""
+    params = omero.sys.ParametersI()
+    params.addLong("mid", master_user_id)
+    params.add(
+        "ns",
+        omero.rtypes.wrap("%s%%/%s" % (FORM_DATA_NAMESPACE_PREFIX, form_id)),
+    )
+
+    rows = conn.getQueryService().projection(
+        """
+        SELECT anno
+        FROM Experimenter user
+        JOIN user.annotationLinks links
+        JOIN links.child anno
+        WHERE anno.class = MapAnnotation
+        AND user.id = :mid
+        AND anno.ns LIKE :ns
+        """,
+        params,
+        conn.SERVICE_OPTS,
+    )
+
+    for row in rows:
+        annotation = row[0].val
+        parsed = parse_form_data_namespace(annotation.ns.val)
+        if parsed is not None and parsed[2] == form_id:
+            yield parsed, annotation
 
 
 def list_form_data_orphans(conn, master_user_id):
@@ -670,6 +819,7 @@ def add_form_data(
     data,
     changed_by,
     changed_at,
+    copied_from=None,
 ):
     """
     Add form data and associated metadata to the form master user
@@ -678,30 +828,38 @@ def add_form_data(
     # TODO Check and assert that the object exists
     # qs = conn.getQueryService()
 
-    namespace = "hms.harvard.edu/omero/forms/data/%s/%s/%s" % (
+    namespace = "%s%s/%s/%s" % (
+        FORM_DATA_NAMESPACE_PREFIX,
         obj_type,
         obj_id,
         form_id,
     )
 
-    json_data = json.dumps(
-        {
-            "formId": form_id,
-            "formTimestamp": form_timestamp,
-            "formData": data,
-            "changedBy": changed_by,
-            "changedAt": changed_at.isoformat(),
-            "message": message,
-        }
-    )
+    stored_data = {
+        "formId": form_id,
+        "formTimestamp": form_timestamp,
+        "formData": data,
+        "changedBy": changed_by,
+        "changedAt": changed_at.isoformat(),
+        "message": message,
+    }
+    if copied_from is not None:
+        stored_data["copiedFrom"] = copied_from
+    json_data = json.dumps(stored_data)
 
     # If the appropriate annotation already exists, update it
     anno = _get_form_data(conn, master_user_id, form_id, obj_type, obj_id)
     if anno is not None:
 
         kvs = anno.getMapValue()
-
-        kvs.insert(0, omero.model.NamedValue(changed_at.isoformat(), json_data))
+        payload_rows = encode_payload(
+            changed_at.isoformat(),
+            json_data,
+            existing_names=[kv.name for kv in kvs],
+        )
+        kvs[0:0] = [
+            omero.model.NamedValue(name, value) for name, value in payload_rows
+        ]
 
         us = conn.getUpdateService()
         us.saveObject(anno, conn.SERVICE_OPTS)
@@ -711,7 +869,8 @@ def add_form_data(
 
         mapAnn = omero.gateway.MapAnnotationWrapper(conn)
         mapAnn.setNs(namespace)
-        mapAnn.setValue([[changed_at.isoformat(), json_data]])
+        payload_rows = encode_payload(changed_at.isoformat(), json_data)
+        mapAnn.setValue([[name, value] for name, value in payload_rows])
         mapAnn.save()
 
         link = omero.model.ExperimenterAnnotationLinkI()
@@ -720,6 +879,25 @@ def add_form_data(
 
         update = conn.getUpdateService()
         update.saveObject(link, conn.SERVICE_OPTS)
+
+
+def _get_form_data_annotation_history(annotation):
+    """Decode one submission annotation into newest-first history entries."""
+    entries = [(kv.name, kv.value) for kv in annotation.getMapValue()]
+    for data_timestamp, payload in iter_payload_entries(entries):
+        loaded_data = json.loads(payload)
+        entry = {
+            "formId": loaded_data["formId"],
+            "formTimestamp": loaded_data["formTimestamp"],
+            "formData": loaded_data["formData"],
+            "changedBy": loaded_data["changedBy"],
+            "changedAt": datetime.fromisoformat(loaded_data["changedAt"]),
+            "dataTimestamp": data_timestamp,
+            "message": loaded_data["message"],
+        }
+        if isinstance(loaded_data.get("copiedFrom"), dict):
+            entry["copiedFrom"] = loaded_data["copiedFrom"]
+        yield entry
 
 
 def get_form_data_history(conn, master_user_id, form_id, obj_type, obj_id):
@@ -731,22 +909,130 @@ def get_form_data_history(conn, master_user_id, form_id, obj_type, obj_id):
     anno = _get_form_data(conn, master_user_id, form_id, obj_type, obj_id)
 
     if anno is not None:
-        kvs = anno.getMapValue()
-        for kv in kvs:
-            loaded_data = json.loads(kv.value)
-            yield {
-                "formId": loaded_data["formId"],
-                "formTimestamp": loaded_data["formTimestamp"],
-                "formData": loaded_data["formData"],
-                "changedBy": loaded_data["changedBy"],
-                "changedAt": datetime.strptime(
-                    loaded_data["changedAt"], "%Y-%m-%dT%H:%M:%S.%f"
-                ),
-                "message": loaded_data["message"],
-            }
+        for entry in _get_form_data_annotation_history(anno):
+            yield entry
 
     else:
         return
+
+
+def list_form_reuse_candidates(
+    conn,
+    user_conn,
+    master_user_id,
+    form_id,
+    exclude_obj_type=None,
+    exclude_obj_id=None,
+):
+    """List the latest saved value on each other readable OMERO object."""
+    candidates = {}
+    for parsed, annotation in _find_form_data_annotations(
+        conn, master_user_id, form_id
+    ):
+        obj_type, obj_id, _stored_form_id = parsed
+        if obj_type == exclude_obj_type and obj_id == exclude_obj_id:
+            continue
+
+        obj = user_conn.getObject(obj_type, obj_id)
+        if obj is None:
+            continue
+
+        try:
+            latest = next(_get_form_data_annotation_history(annotation), None)
+        except (KeyError, TypeError, ValueError):
+            # One corrupt historical object must not hide every valid source.
+            continue
+        if latest is None:
+            continue
+
+        candidate = {
+            "sourceFormId": form_id,
+            "sourceFormTimestamp": latest["formTimestamp"],
+            "sourceObjectType": obj_type,
+            "sourceObjectId": obj_id,
+            "sourceObjectName": obj.getName(),
+            "sourceDataTimestamp": latest["dataTimestamp"],
+            "changedAt": latest["changedAt"].isoformat(),
+            "changedBy": latest["changedBy"],
+            "message": latest["message"],
+        }
+        object_key = (obj_type, obj_id)
+        existing = candidates.get(object_key)
+        if existing is None or candidate["changedAt"] > existing["changedAt"]:
+            candidates[object_key] = candidate
+
+    return sorted(
+        candidates.values(), key=lambda item: item["changedAt"], reverse=True
+    )
+
+
+def resolve_reuse_provenance(
+    conn, user_conn, master_user_id, target_form_id, copied_from
+):
+    """Validate and normalize a client-supplied reuse source reference."""
+    if copied_from is None:
+        return None
+    if not isinstance(copied_from, dict):
+        raise ValueError("copiedFrom must be an object")
+
+    required = {
+        "sourceFormId",
+        "sourceFormTimestamp",
+        "sourceObjectType",
+        "sourceObjectId",
+        "sourceDataTimestamp",
+    }
+    if not required.issubset(copied_from):
+        raise ValueError("copiedFrom is missing required source fields")
+
+    source_form_id = copied_from["sourceFormId"]
+    source_form_timestamp = copied_from["sourceFormTimestamp"]
+    source_obj_type = copied_from["sourceObjectType"]
+    source_data_timestamp = copied_from["sourceDataTimestamp"]
+    try:
+        if isinstance(copied_from["sourceObjectId"], bool):
+            raise ValueError
+        source_obj_id = int(copied_from["sourceObjectId"])
+    except (TypeError, ValueError):
+        raise ValueError("copiedFrom sourceObjectId must be an integer")
+
+    if source_form_id != target_form_id:
+        raise ValueError("Cross-form reuse is not supported yet")
+    if source_obj_type not in FORM_DATA_OBJECT_TYPES:
+        raise ValueError("copiedFrom has an invalid source object type")
+    if not isinstance(source_form_timestamp, str) or not source_form_timestamp:
+        raise ValueError("copiedFrom has an invalid source form timestamp")
+    if not isinstance(source_data_timestamp, str) or not source_data_timestamp:
+        raise ValueError("copiedFrom has an invalid source data timestamp")
+    if user_conn.getObject(source_obj_type, source_obj_id) is None:
+        raise ValueError("Reuse source is not readable by this user")
+
+    matching_entry = next(
+        (
+            entry
+            for entry in get_form_data_history(
+                conn,
+                master_user_id,
+                source_form_id,
+                source_obj_type,
+                source_obj_id,
+            )
+            if entry["dataTimestamp"] == source_data_timestamp
+        ),
+        None,
+    )
+    if matching_entry is None:
+        raise ValueError("Reuse source submission no longer exists")
+    if matching_entry["formTimestamp"] != source_form_timestamp:
+        raise ValueError("Reuse source form version does not match")
+
+    return {
+        "sourceFormId": source_form_id,
+        "sourceFormTimestamp": source_form_timestamp,
+        "sourceObjectType": source_obj_type,
+        "sourceObjectId": source_obj_id,
+        "sourceDataTimestamp": source_data_timestamp,
+    }
 
 
 def get_form_data(conn, master_user_id, form_id, obj_type, obj_id):
