@@ -11,7 +11,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:frontend": "node tests/frontend/editor-document-key.test.js",
+    "test:frontend": "node tests/frontend/editor-document-key.test.js && node tests/frontend/form-url-loader.test.js",
     "build": "webpack --mode production",
     "dev": "webpack --mode development",
     "watch": "webpack --mode development --watch"

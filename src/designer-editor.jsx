@@ -11,15 +11,7 @@ import validator from '@rjsf/validator-ajv8';
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
 const { editorDocumentKey, nextEditorRevision } = require('./editor-document-key');
-
-// Helper function to convert GitHub URLs to raw content URLs
-const convertGitHubUrl = (url) => {
-  if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
-    return url.replace('github.com', 'raw.githubusercontent.com')
-               .replace('/blob/', '/');
-  }
-  return url;
-};
+const { loadFormPackageFromUrl } = require('./form-url-loader');
 
 // Helper function to extract URL from a message
 const extractUrlFromMessage = (message) => {
@@ -370,30 +362,24 @@ export default class Editor extends React.Component {
   }
 
   loadFromUrl(url) {
-    const rawUrl = convertGitHubUrl(url);
-    
-    fetch(rawUrl)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        const formId = data.title || '';
+    loadFormPackageFromUrl(url)
+      .then(({schema, uiSchema, uiSchemaWarning}) => {
+        const formId = schema.title || '';
         
         // Update the state but preserve message if schema hasn't changed
         this.setState(prevState => {
-          const isSchemaChanged = JSON.stringify(data) !== JSON.stringify(prevState.previousSchema);
+          const isSchemaChanged = JSON.stringify(schema) !== JSON.stringify(prevState.previousSchema);
           
           return {
-            schema: data,
+            schema,
+            uiSchema,
+            formData: {},
             formId: formId,
-            message: isSchemaChanged ? 
-              `Loaded version ${data.version || 'unknown'} from ${url}` : 
+            message: isSchemaChanged ?
+              `Loaded version ${schema.version || 'unknown'} from ${url}` :
               prevState.message,
             urlToLoad: url,
-            urlLoadError: null,
+            urlLoadError: uiSchemaWarning,
             editorRevision: nextEditorRevision(prevState.editorRevision)
           };
         });
