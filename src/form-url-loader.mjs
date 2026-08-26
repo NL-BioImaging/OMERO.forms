@@ -1,9 +1,9 @@
-const UI_SCHEMA_FILENAME = 'uischema.json';
+export const UI_SCHEMA_FILENAME = 'uischema.json';
 
-const isJsonObject = (value) =>
+export const isJsonObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const containsUiSchemaDirective = (value) => {
+export const containsUiSchemaDirective = (value) => {
   if (!isJsonObject(value)) {
     return false;
   }
@@ -13,7 +13,7 @@ const containsUiSchemaDirective = (value) => {
   );
 };
 
-const convertGitHubUrl = (url) => {
+export const convertGitHubUrl = (url) => {
   const parsed = new URL(url);
 
   if (parsed.hostname !== 'github.com') {
@@ -33,7 +33,7 @@ const convertGitHubUrl = (url) => {
   return rawUrl.toString();
 };
 
-const adjacentUiSchemaUrl = (schemaUrl) =>
+export const adjacentUiSchemaUrl = (schemaUrl) =>
   new URL(UI_SCHEMA_FILENAME, convertGitHubUrl(schemaUrl)).toString();
 
 const loadJsonObject = async (response, label) => {
@@ -44,7 +44,7 @@ const loadJsonObject = async (response, label) => {
   return value;
 };
 
-const loadFormPackageFromUrl = async (url, fetchImpl = fetch) => {
+export const loadFormPackageFromUrl = async (url, fetchImpl = fetch) => {
   const schemaUrl = convertGitHubUrl(url);
   const schemaResponse = await fetchImpl(schemaUrl);
   if (!schemaResponse.ok) {
@@ -88,13 +88,4 @@ const loadFormPackageFromUrl = async (url, fetchImpl = fetch) => {
     uiSchemaUrl,
     uiSchemaWarning,
   };
-};
-
-module.exports = {
-  UI_SCHEMA_FILENAME,
-  adjacentUiSchemaUrl,
-  containsUiSchemaDirective,
-  convertGitHubUrl,
-  isJsonObject,
-  loadFormPackageFromUrl,
 };

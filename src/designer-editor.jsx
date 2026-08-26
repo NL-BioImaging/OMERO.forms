@@ -10,8 +10,11 @@ import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { Modal, Button, FormGroup, FormControl } from 'react-bootstrap';
 import { Form as BootstrapForm } from 'react-bootstrap';
-const { editorDocumentKey, nextEditorRevision } = require('./editor-document-key');
-const { loadFormPackageFromUrl } = require('./form-url-loader');
+import {
+  editorDocumentKey,
+  nextEditorRevision,
+} from './editor-document-key.mjs';
+import {loadFormPackageFromUrl} from './form-url-loader.mjs';
 
 // Helper function to extract URL from a message
 const extractUrlFromMessage = (message) => {

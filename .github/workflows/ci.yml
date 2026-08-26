@@ -48,3 +48,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Check browser bundle module format
+        run: npm run test:bundle

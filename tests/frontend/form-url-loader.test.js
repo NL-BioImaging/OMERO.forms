@@ -1,12 +1,5 @@
 const assert = require('node:assert/strict');
 
-const {
-  adjacentUiSchemaUrl,
-  containsUiSchemaDirective,
-  convertGitHubUrl,
-  loadFormPackageFromUrl,
-} = require('../../src/form-url-loader');
-
 const response = (status, body) => ({
   ok: status >= 200 && status < 300,
   status,
@@ -14,6 +7,13 @@ const response = (status, body) => ({
 });
 
 const run = async () => {
+  const {
+    adjacentUiSchemaUrl,
+    containsUiSchemaDirective,
+    convertGitHubUrl,
+    loadFormPackageFromUrl,
+  } = await import('../../src/form-url-loader.mjs');
+
   const githubUrl =
     'https://github.com/example/forms/blob/main/assay/schema.json';
   const rawSchemaUrl =
