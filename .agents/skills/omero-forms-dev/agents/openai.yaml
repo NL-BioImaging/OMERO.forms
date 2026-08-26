@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMERO.forms Development"
+  short_description: "Develop and verify the OMERO.forms web plugin"
+  default_prompt: "Use $omero-forms-dev to implement and verify an OMERO.forms change using repository conventions."

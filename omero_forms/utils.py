@@ -9,6 +9,8 @@ from datetime import datetime
 import re
 from copy import deepcopy
 
+from .storage_codec import encode_payload, iter_payload_entries
+
 
 class DatetimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -94,8 +96,16 @@ def add_form_version(
         for obj_type in obj_types:
             new_kvs.append(omero.model.NamedValue("objType", obj_type))
 
-        # Add the new version
-        new_kvs.insert(0, omero.model.NamedValue(timestamp.isoformat(), json_data))
+        # Add the new version. Large payloads are represented by a manifest
+        # followed by safe-sized chunks; small payloads retain the legacy row.
+        payload_rows = encode_payload(
+            timestamp.isoformat(),
+            json_data,
+            existing_names=[kv.name for kv in new_kvs],
+        )
+        new_kvs[0:0] = [
+            omero.model.NamedValue(name, value) for name, value in payload_rows
+        ]
 
         kvs[:] = new_kvs
 
@@ -108,12 +118,11 @@ def add_form_version(
         mapAnn = omero.gateway.MapAnnotationWrapper(conn)
         mapAnn.setNs(namespace)
 
+        payload_rows = encode_payload(timestamp.isoformat(), json_data)
         mapAnn.setValue(
-            [
-                ["id", form_id],
-                [timestamp.isoformat(), json_data],
-                ["owner", str(author)],
-            ]
+            [["id", form_id]]
+            + [[name, value] for name, value in payload_rows]
+            + [["owner", str(author)]]
             + [["objType", obj_type] for obj_type in obj_types]
         )
         mapAnn.save()
@@ -345,14 +354,11 @@ def get_form_versions(conn, master_user_id, form_id):
 
     _form_versions = []
 
-    kvs = anno.getMapValue()
-    # TODO Can these be indexed directly instead of iterating over all
-    # the keys looking for the ones we want
-    # At the least, we should iterate in reverse order if possible as
-    # these are likely at the bottom of the list as new items are prepended
-    for kv in kvs:
-        if kv.name not in ["id", "owner", "objType"]:
-            _form_versions.append(json.loads(kv.value))
+    entries = [(kv.name, kv.value) for kv in anno.getMapValue()]
+    for _timestamp, payload in iter_payload_entries(
+        entries, reserved_names=["id", "owner", "objType"]
+    ):
+        _form_versions.append(json.loads(payload))
 
     return _form_versions
 
@@ -373,10 +379,6 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
     _json_data = None
 
     kvs = anno.getMapValue()
-    # TODO Can these be indexed directly instead of iterating over all
-    # the keys looking for the ones we want
-    # At the least, we should iterate in reverse order if possible as
-    # these are likely at the bottom of the list as new items are prepended
     for kv in kvs:
         if kv.name == "id":
             _id = kv.value
@@ -384,10 +386,17 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
             _owners.append(int(kv.value))
         elif kv.name == "objType":
             _obj_types.append(kv.value)
-        elif timestamp is not None and kv.name == timestamp:
-            _json_data = kv.value
-        elif timestamp is None and _json_data is None:
-            _json_data = kv.value
+
+    entries = [(kv.name, kv.value) for kv in kvs]
+    for stored_timestamp, payload in iter_payload_entries(
+        entries, reserved_names=["id", "owner", "objType"]
+    ):
+        if timestamp is not None and stored_timestamp == timestamp:
+            _json_data = payload
+            break
+        if timestamp is None:
+            _json_data = payload
+            break
 
     d = json.loads(_json_data)
 
@@ -700,8 +709,14 @@ def add_form_data(
     if anno is not None:
 
         kvs = anno.getMapValue()
-
-        kvs.insert(0, omero.model.NamedValue(changed_at.isoformat(), json_data))
+        payload_rows = encode_payload(
+            changed_at.isoformat(),
+            json_data,
+            existing_names=[kv.name for kv in kvs],
+        )
+        kvs[0:0] = [
+            omero.model.NamedValue(name, value) for name, value in payload_rows
+        ]
 
         us = conn.getUpdateService()
         us.saveObject(anno, conn.SERVICE_OPTS)
@@ -711,7 +726,8 @@ def add_form_data(
 
         mapAnn = omero.gateway.MapAnnotationWrapper(conn)
         mapAnn.setNs(namespace)
-        mapAnn.setValue([[changed_at.isoformat(), json_data]])
+        payload_rows = encode_payload(changed_at.isoformat(), json_data)
+        mapAnn.setValue([[name, value] for name, value in payload_rows])
         mapAnn.save()
 
         link = omero.model.ExperimenterAnnotationLinkI()
@@ -731,9 +747,9 @@ def get_form_data_history(conn, master_user_id, form_id, obj_type, obj_id):
     anno = _get_form_data(conn, master_user_id, form_id, obj_type, obj_id)
 
     if anno is not None:
-        kvs = anno.getMapValue()
-        for kv in kvs:
-            loaded_data = json.loads(kv.value)
+        entries = [(kv.name, kv.value) for kv in anno.getMapValue()]
+        for _changed_at, payload in iter_payload_entries(entries):
+            loaded_data = json.loads(payload)
             yield {
                 "formId": loaded_data["formId"],
                 "formTimestamp": loaded_data["formTimestamp"],
