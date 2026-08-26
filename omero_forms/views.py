@@ -505,3 +505,60 @@ def save_form_assignment(request, conn=None, su_conn=None, form_master=None, **k
             )
         }
     )
+
+
+@login_required(setGroupContext=True)
+@with_su
+@csrf_exempt
+def save_group_form_assignments(
+    request, conn=None, su_conn=None, form_master=None, **kwargs
+):
+    if request.method != "POST":
+        return HttpResponseNotAllowed("Methods allowed: POST")
+
+    data = json.loads(request.body)
+    try:
+        group_id = int(data["groupId"])
+    except (KeyError, TypeError, ValueError):
+        return HttpResponseBadRequest("groupId must be an integer")
+
+    form_ids = data.get("formIds")
+    if not isinstance(form_ids, list) or any(
+        not isinstance(form_id, str) or len(form_id.strip()) == 0
+        for form_id in form_ids
+    ):
+        return HttpResponseBadRequest("formIds must be a list of form names")
+    requested = {form_id.strip() for form_id in form_ids}
+
+    managed_group_ids = [group["id"] for group in utils.get_managed_groups(conn)]
+    if group_id not in managed_group_ids:
+        return HttpResponseUnauthorized(
+            "Can not update assignments for group: %s" % group_id
+        )
+
+    known_form_ids = {
+        form["id"] for form in utils.list_forms(su_conn, form_master)
+    }
+    unknown_form_ids = requested - known_form_ids
+    if unknown_form_ids:
+        return HttpResponseBadRequest(
+            "Unknown form(s): %s" % sorted(unknown_form_ids)
+        )
+
+    current = utils.get_group_assignments(
+        su_conn, form_master, [group_id]
+    ).get(group_id, [])
+    to_add, to_remove = utils.calculate_group_form_changes(current, requested)
+
+    for form_id in sorted(to_add):
+        utils.assign_form(su_conn, form_master, form_id, [group_id], [])
+    for form_id in sorted(to_remove):
+        utils.assign_form(su_conn, form_master, form_id, [], [group_id])
+
+    return JsonResponse(
+        {
+            "assignments": utils.get_group_assignments(
+                su_conn, form_master, managed_group_ids
+            )
+        }
+    )

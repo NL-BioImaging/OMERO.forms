@@ -247,6 +247,24 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
         self.assertEqual(to_remove, set())
         self.assertEqual(disallowed, {7})
 
+    def test_group_form_assignment_changes_support_add_and_remove(self):
+        to_add, to_remove = utils.calculate_group_form_changes(
+            current_form_ids=["Investigation", "Study"],
+            requested_form_ids=["Study", "Assay"],
+        )
+
+        self.assertEqual(to_add, {"Assay"})
+        self.assertEqual(to_remove, {"Investigation"})
+
+    def test_group_can_be_fully_unassigned(self):
+        to_add, to_remove = utils.calculate_group_form_changes(
+            current_form_ids=["Investigation", "Study"],
+            requested_form_ids=[],
+        )
+
+        self.assertEqual(to_add, set())
+        self.assertEqual(to_remove, {"Investigation", "Study"})
+
     def test_updating_form_prepends_complete_chunk_block(self):
         old_timestamp = "2026-08-25T12:00:00.123456"
         old_payload = self._form_payload('{"type":"object"}', old_timestamp)

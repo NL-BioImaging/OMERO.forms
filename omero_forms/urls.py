@@ -75,4 +75,10 @@ urlpatterns = [
         views.save_form_assignment,
         name="omeroforms_save_form_assignment",
     ),
+    # Save all form assignments for one managed group
+    re_path(
+        r"^save_group_form_assignments/$",
+        views.save_group_form_assignments,
+        name="omeroforms_save_group_form_assignments",
+    ),
 ]

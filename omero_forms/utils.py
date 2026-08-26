@@ -525,6 +525,13 @@ def calculate_assignment_changes(
     )
 
 
+def calculate_group_form_changes(current_form_ids, requested_form_ids):
+    """Return form assignments to add and remove for one managed group."""
+    current = set(current_form_ids)
+    requested = set(requested_form_ids)
+    return requested - current, current - requested
+
+
 def delete_form(conn, master_user_id, form_id):
     """
     Delete a form (and all form versions of that form) from the form master
