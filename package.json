@@ -11,7 +11,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:frontend": "node tests/frontend/editor-document-key.test.js && node tests/frontend/form-url-loader.test.js && node tests/frontend/api-client.test.js && node tests/frontend/form-source-url.test.js",
+    "test:frontend": "node tests/frontend/editor-document-key.test.js && node tests/frontend/form-url-loader.test.js && node tests/frontend/api-client.test.js && node tests/frontend/form-source-url.test.js && node tests/frontend/assignment-selection.test.js",
     "test:bundle": "node tests/frontend/designer-bundle.test.js",
     "build": "webpack --mode production",
     "dev": "webpack --mode development",

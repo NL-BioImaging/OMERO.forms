@@ -479,18 +479,16 @@ def save_form_assignment(request, conn=None, su_conn=None, form_master=None, **k
         )
 
     # Get the existing assignments
-    current = set(utils.get_form_assignments(su_conn, form_master, form_id))
-    requested = set(group_ids)
-    owned = set([g["id"] for g in utils.get_managed_groups(conn)])
-
-    to_add = requested - current
-    to_remove = (owned - requested) & current
+    current = utils.get_form_assignments(su_conn, form_master, form_id)
+    owned = [g["id"] for g in utils.get_managed_groups(conn)]
+    to_add, to_remove, disallowed_groups = utils.calculate_assignment_changes(
+        current, group_ids, owned
+    )
 
     # Disallow assigning groups that the user does not have permissions on
-    disallowed_groups = list((requested - owned))
     if len(disallowed_groups) > 0:
         return HttpResponseUnauthorized(
-            "Can not assign to groups: %s" % disallowed_groups
+            "Can not assign to groups: %s" % list(disallowed_groups)
         )
 
     if len(to_add) > 0 or len(to_remove) > 0:

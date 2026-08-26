@@ -510,6 +510,21 @@ def get_form_assignments(conn, master_user_id, form_id):
     return list(group_ids)
 
 
+def calculate_assignment_changes(
+    current_group_ids, requested_group_ids, owned_group_ids
+):
+    """Return additions, permitted removals, and disallowed additions."""
+    current = set(current_group_ids)
+    requested = set(requested_group_ids)
+    owned = set(owned_group_ids)
+
+    return (
+        requested - current,
+        (owned - requested) & current,
+        requested - owned,
+    )
+
+
 def delete_form(conn, master_user_id, form_id):
     """
     Delete a form (and all form versions of that form) from the form master

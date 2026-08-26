@@ -225,6 +225,28 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be a string"):
             utils.resolve_source_url(123, existing)
 
+    def test_empty_assignment_selection_removes_only_managed_groups(self):
+        to_add, to_remove, disallowed = utils.calculate_assignment_changes(
+            current_group_ids=[3, 7],
+            requested_group_ids=[],
+            owned_group_ids=[3],
+        )
+
+        self.assertEqual(to_add, set())
+        self.assertEqual(to_remove, {3})
+        self.assertEqual(disallowed, set())
+
+    def test_assignment_selection_rejects_unmanaged_additions(self):
+        to_add, to_remove, disallowed = utils.calculate_assignment_changes(
+            current_group_ids=[3],
+            requested_group_ids=[3, 7],
+            owned_group_ids=[3],
+        )
+
+        self.assertEqual(to_add, {7})
+        self.assertEqual(to_remove, set())
+        self.assertEqual(disallowed, {7})
+
     def test_updating_form_prepends_complete_chunk_block(self):
         old_timestamp = "2026-08-25T12:00:00.123456"
         old_payload = self._form_payload('{"type":"object"}', old_timestamp)

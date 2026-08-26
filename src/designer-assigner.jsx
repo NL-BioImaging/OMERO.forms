@@ -1,5 +1,9 @@
 import React from 'react';
 import Select from "react-select";
+import {
+  canSaveAssignments,
+  groupIdsFromSelection,
+} from './assignment-selection.mjs';
 
 export default class Assigner extends React.Component {
   constructor(props) {
@@ -88,7 +92,7 @@ export default class Assigner extends React.Component {
 
   selectGroups(selection) {
     this.setState({
-      formGroupIds: selection.map(s => s.value)
+      formGroupIds: groupIdsFromSelection(selection)
     });
   }
 
@@ -200,6 +204,10 @@ export default class Assigner extends React.Component {
                 options={groupOptions}
                 onChange={this.selectGroups}
               />
+              <span className='help-block'>
+                Save with no groups selected to unassign this form from all
+                groups you manage.
+              </span>
             </div>
 
             <div className="col-sm-1">
@@ -207,7 +215,7 @@ export default class Assigner extends React.Component {
                 type="button" 
                 className="btn btn-default" 
                 onClick={this.saveAssignment}
-                disabled={!formId || formGroupIds.length === 0}
+                disabled={!canSaveAssignments(formId, formGroupIds)}
               >
                 Save
               </button>
