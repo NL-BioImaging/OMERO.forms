@@ -334,6 +334,7 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
     ui_schema = data.get("uiSchema", "")
     message = data.get("message", "")
     obj_types = data.get("objTypes", [])
+    source_url = data.get("sourceUrl")
 
     # Ensure there is at least a formId
     if form_id is None:
@@ -358,6 +359,13 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
         if user_id not in existing_form["owners"] and admin is not True:
             return HttpResponseUnauthorized("Updating a form requires ownership")
 
+    # Older clients do not send sourceUrl. Preserve the latest value instead
+    # of silently dropping provenance when they create another version.
+    try:
+        source_url = utils.resolve_source_url(source_url, existing_form)
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
+
     # Ensure the object type is valid
     for obj_type in obj_types:
         if obj_type not in ["Project", "Dataset", "Screen", "Plate"]:
@@ -373,6 +381,7 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
         datetime.now(),
         message,
         obj_types,
+        source_url,
     )
 
     return JsonResponse({"form": form_version})

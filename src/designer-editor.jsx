@@ -16,13 +16,7 @@ import {
 } from './editor-document-key.mjs';
 import {loadFormPackageFromUrl} from './form-url-loader.mjs';
 import {buildApiUrl, fetchJson} from './api-client.mjs';
-
-// Helper function to extract URL from a message
-const extractUrlFromMessage = (message) => {
-  if (!message) return '';
-  const match = message.match(/from (https:\/\/[^\s]+)$/);
-  return match ? match[1] : '';
-};
+import {sourceUrlFromFormVersion} from './form-source-url.mjs';
 
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
@@ -249,7 +243,7 @@ export default class Editor extends React.Component {
             const uiSchema = JSON.parse(form.uiSchema);
             
             // Extract URL from message if it exists
-            const urlToLoad = extractUrlFromMessage(form.message);
+            const urlToLoad = sourceUrlFromFormVersion(form);
             
             this.setState(prevState => ({
                 timestamp: form.timestamp,
@@ -314,7 +308,14 @@ export default class Editor extends React.Component {
   }
 
   saveForm() {
-    const { formId, schema, uiSchema, formTypes, message } = this.state;
+    const {
+      formId,
+      schema,
+      uiSchema,
+      formTypes,
+      message,
+      urlToLoad,
+    } = this.state;
     const { forms, updateForm, urls } = this.props;
 
     const request = new Request(
@@ -326,7 +327,8 @@ export default class Editor extends React.Component {
           schema: JSON.stringify(schema),
           uiSchema: JSON.stringify(uiSchema),
           message,
-          objTypes: formTypes
+          objTypes: formTypes,
+          sourceUrl: urlToLoad || ''
         }),
         credentials: 'same-origin'
       }

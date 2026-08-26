@@ -12,6 +12,31 @@ from copy import deepcopy
 from .storage_codec import encode_payload, iter_payload_entries
 
 
+SOURCE_URL_MESSAGE_PATTERN = re.compile(r"from (https://\S+)$")
+
+
+def _normalise_form_version(data):
+    """Add fields introduced after legacy form versions were stored."""
+    if "sourceUrl" not in data:
+        message = data.get("message", "")
+        match = (
+            SOURCE_URL_MESSAGE_PATTERN.search(message)
+            if isinstance(message, str)
+            else None
+        )
+        data["sourceUrl"] = match.group(1) if match else ""
+    return data
+
+
+def resolve_source_url(source_url, existing_form=None):
+    """Validate sourceUrl and inherit it when an older client omits it."""
+    if source_url is None:
+        return existing_form.get("sourceUrl", "") if existing_form else ""
+    if not isinstance(source_url, str):
+        raise ValueError("sourceUrl must be a string")
+    return source_url
+
+
 class DatetimeEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):
@@ -50,6 +75,7 @@ def add_form_version(
     timestamp,
     message,
     obj_types=[],
+    source_url="",
 ):
     """
     Add a form version to the form master user. Creates form wrapper if
@@ -73,6 +99,7 @@ def add_form_version(
             "author": author,
             "timestamp": timestamp.isoformat(),
             "message": message,
+            "sourceUrl": source_url,
         }
     )
 
@@ -142,6 +169,7 @@ def add_form_version(
         "author": author,
         "timestamp": timestamp,
         "message": message,
+        "sourceUrl": source_url,
         "objTypes": obj_types,
     }
 
@@ -358,7 +386,7 @@ def get_form_versions(conn, master_user_id, form_id):
     for _timestamp, payload in iter_payload_entries(
         entries, reserved_names=["id", "owner", "objType"]
     ):
-        _form_versions.append(json.loads(payload))
+        _form_versions.append(_normalise_form_version(json.loads(payload)))
 
     return _form_versions
 
@@ -398,7 +426,7 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
             _json_data = payload
             break
 
-    d = json.loads(_json_data)
+    d = _normalise_form_version(json.loads(_json_data))
 
     return {
         "id": _id,
@@ -407,6 +435,7 @@ def get_form_version(conn, user_conn, master_user_id, form_id, timestamp=None):
         "author": d["author"],
         "timestamp": d["timestamp"],
         "message": d["message"],
+        "sourceUrl": d["sourceUrl"],
         "objTypes": _obj_types,
         "owners": _owners,
         "editable": user_conn.isAdmin() or user_conn.getUserId() in _owners,

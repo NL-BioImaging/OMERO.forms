@@ -153,12 +153,46 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
                 timestamp="2026-08-25T12:00:00.123456",
             )
 
-        self.assertEqual(versions, [json.loads(latest_payload), json.loads(older_payload)])
+        expected_versions = [json.loads(latest_payload), json.loads(older_payload)]
+        for version in expected_versions:
+            version["sourceUrl"] = ""
+        self.assertEqual(versions, expected_versions)
         self.assertEqual(latest["schema"], "x" * 6000)
         self.assertEqual(latest["owners"], [7])
         self.assertEqual(latest["objTypes"], ["Dataset"])
         self.assertTrue(latest["editable"])
         self.assertEqual(older["schema"], '{"type":"object"}')
+        self.assertEqual(latest["sourceUrl"], "")
+
+    def test_legacy_load_message_backfills_source_url(self):
+        timestamp = "2026-08-26T12:00:00.123456"
+        source_url = "https://example.org/forms/schema.json"
+        payload = json.loads(self._form_payload("{}", timestamp))
+        payload["message"] = "Loaded version v1.0.0 from %s" % source_url
+        annotation = FakeAnnotation(
+            [
+                (timestamp, json.dumps(payload)),
+                ("id", "test-form"),
+                ("owner", "7"),
+            ]
+        )
+
+        with mock.patch.object(utils, "_get_form", return_value=annotation):
+            version = utils.get_form_version(
+                None, FakeUserConnection(), None, "test-form"
+            )
+
+        self.assertEqual(version["sourceUrl"], source_url)
+
+    def test_older_client_inherits_existing_source_url(self):
+        existing = {"sourceUrl": "https://example.org/forms/schema.json"}
+        self.assertEqual(
+            utils.resolve_source_url(None, existing),
+            existing["sourceUrl"],
+        )
+        self.assertEqual(utils.resolve_source_url("", existing), "")
+        with self.assertRaisesRegex(ValueError, "must be a string"):
+            utils.resolve_source_url(123, existing)
 
     def test_updating_form_prepends_complete_chunk_block(self):
         old_timestamp = "2026-08-25T12:00:00.123456"
@@ -185,6 +219,7 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
                 timestamp,
                 "large schema",
                 ["Dataset"],
+                "https://example.org/forms/schema.json",
             )
 
         entries = [(row.name, row.value) for row in annotation.rows]
@@ -195,6 +230,10 @@ class UtilsStorageIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(decoded_versions[0][0], timestamp.isoformat())
         self.assertEqual(json.loads(decoded_versions[0][1])["schema"], "x" * 6000)
+        self.assertEqual(
+            json.loads(decoded_versions[0][1])["sourceUrl"],
+            "https://example.org/forms/schema.json",
+        )
         self.assertEqual(decoded_versions[1], (old_timestamp, old_payload))
         self.assertEqual(connection.update_service.saved, [annotation])
 
