@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 from . import settings
 from . import utils
+from .form_validation import validate_object_types
 
 OMERO_FORMS_PRIV_UID = None
 
@@ -366,10 +367,10 @@ def save_form(request, conn=None, su_conn=None, form_master=None, **kwargs):
     except ValueError as error:
         return HttpResponseBadRequest(str(error))
 
-    # Ensure the object type is valid
-    for obj_type in obj_types:
-        if obj_type not in ["Project", "Dataset", "Screen", "Plate"]:
-            return HttpResponseBadRequest("%s not a valid obj_type" % obj_type)
+    try:
+        obj_types = validate_object_types(obj_types)
+    except ValueError as error:
+        return HttpResponseBadRequest(str(error))
 
     form_version = utils.add_form_version(
         su_conn,

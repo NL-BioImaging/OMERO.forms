@@ -17,6 +17,10 @@ import {
 import {loadFormPackageFromUrl} from './form-url-loader.mjs';
 import {buildApiUrl, fetchJson} from './api-client.mjs';
 import {sourceUrlFromFormVersion} from './form-source-url.mjs';
+import {
+  canSaveForm,
+  hasApplicableObjectType,
+} from './form-validation.mjs';
 
 // Patching CodeMirror#componentWillReceiveProps so it's executed synchronously
 // Ref https://github.com/mozilla-services/react-jsonschema-form/issues/174
@@ -511,6 +515,10 @@ export default class Editor extends React.Component {
       editStatus = (
         <div className='alert alert-danger form-small-alert'><strong>Form name is owned by someone else</strong></div>
       );
+    } else if (!hasApplicableObjectType(formTypes)) {
+      editStatus = (
+        <div className='alert alert-warning form-small-alert'><strong>Select at least one applicable object type before saving</strong></div>
+      );
     }
 
 
@@ -537,7 +545,12 @@ export default class Editor extends React.Component {
                     type='button'
                     className='btn btn-info'
                     onClick={ this.saveForm }
-                    disabled={ !formId || !unsaved || !editable }
+                    disabled={ !canSaveForm({
+                      formId,
+                      unsaved,
+                      editable,
+                      formTypes
+                    }) }
                   >
                     Save
                     { unsaved && <span className="badge">*</span> }
