@@ -15,6 +15,7 @@ import {
   nextEditorRevision,
 } from './editor-document-key.mjs';
 import {loadFormPackageFromUrl} from './form-url-loader.mjs';
+import {buildApiUrl, fetchJson} from './api-client.mjs';
 
 // Helper function to extract URL from a message
 const extractUrlFromMessage = (message) => {
@@ -235,14 +236,13 @@ export default class Editor extends React.Component {
   loadForm(formId) {
     const { urls } = this.props;
     const formRequest = new Request(
-      `${ urls.base }get_form/${ formId }/`,
+      buildApiUrl(urls.base, 'get_form', formId),
       {
         credentials: 'same-origin'
       }
     );
 
-    fetch(formRequest)
-        .then(response => response.json())
+    fetchJson(formRequest)
         .then(jsonData => {
             const form = jsonData.form;
             const schema = JSON.parse(form.schema);
@@ -268,6 +268,12 @@ export default class Editor extends React.Component {
                 urlLoadError: null,  // Clear any previous errors
                 editorRevision: nextEditorRevision(prevState.editorRevision)
             }));
+        })
+        .catch(error => {
+          console.error('Error loading form:', error);
+          this.setState({
+            urlLoadError: `Failed to load form: ${error.message}`
+          });
         });
   }
 
@@ -326,9 +332,7 @@ export default class Editor extends React.Component {
       }
     );
 
-    fetch(request).then(
-      response => response.json()
-    ).then(
+    fetchJson(request).then(
       jsonData => {
         updateForm(jsonData.form)
         this.setState({
@@ -338,7 +342,12 @@ export default class Editor extends React.Component {
           previousFormTypes: formTypes
         });
       }
-    );
+    ).catch(error => {
+      console.error('Error saving form:', error);
+      this.setState({
+        urlLoadError: `Failed to save form: ${error.message}`
+      });
+    });
 
   }
 
@@ -410,19 +419,24 @@ export default class Editor extends React.Component {
     }
 
     const request = new Request(
-      `${urls.base}get_formid_editable/${name}`,
+      buildApiUrl(urls.base, 'get_formid_editable', name),
       {
         credentials: 'same-origin'
       }
     );
 
-    fetch(request)
-      .then(response => response.json())
+    fetchJson(request)
       .then(jsonData => {
         this.setState({
           editable: jsonData.editable,
           owners: jsonData.owners,
           exists: jsonData.exists
+        });
+      })
+      .catch(error => {
+        console.error('Error validating form name:', error);
+        this.setState({
+          urlLoadError: `Failed to validate form name: ${error.message}`
         });
       });
   }

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
+import {buildApiUrl, fetchJson} from './api-client.mjs';
 
 function compareFormData(d1, d2) {
   // No previous data
@@ -35,7 +36,8 @@ export default class Forms extends React.Component {
       schema: undefined,
       uiSchema: undefined,
       data: undefined,
-      message: ''
+      message: '',
+      loadError: null
     }
 
     this.submitForm = this.submitForm.bind(this);
@@ -86,21 +88,27 @@ export default class Forms extends React.Component {
     } else {
 
       const formRequest = new Request(
-        `${this.props.urls.base}get_form/${formId}/`,
+        buildApiUrl(this.props.urls.base, 'get_form', formId),
         {
           credentials: 'same-origin'
         }
       );
 
       const dataRequest = new Request(
-        `${this.props.urls.base}get_form_data/${formId}/${objType}/${objId}/`,
+        buildApiUrl(
+          this.props.urls.base,
+          'get_form_data',
+          formId,
+          objType,
+          objId
+        ),
         {
           credentials: 'same-origin'
         }
       );
 
-      const formP = fetch(formRequest).then(response => response.json());
-      const dataP = fetch(dataRequest).then(response => response.json());
+      const formP = fetchJson(formRequest);
+      const dataP = fetchJson(dataRequest);
 
       Promise.all(
         [formP, dataP]
@@ -113,10 +121,16 @@ export default class Forms extends React.Component {
             schema: JSON.parse(form.schema),
             uiSchema: JSON.parse(form.uiSchema),
             data: data ? JSON.parse(data.formData) : {},
-            message: ''
+            message: '',
+            loadError: null
           });
         }
-      );
+      ).catch(error => {
+        console.error('Error loading form and data:', error);
+        this.setState({
+          loadError: `Failed to load form: ${error.message}`
+        });
+      });
     }
   }
 
@@ -141,7 +155,13 @@ export default class Forms extends React.Component {
 
     // Take the form data, submit this to django
     $.ajax({
-      url: `${ this.props.urls.base }save_form_data/${ formId }/${ objType }/${ objId }/`,
+      url: buildApiUrl(
+        this.props.urls.base,
+        'save_form_data',
+        formId,
+        objType,
+        objId
+      ),
       type: 'POST',
       data: JSON.stringify(updateForm),
       success: function(data) {
@@ -202,12 +222,16 @@ export default class Forms extends React.Component {
   }
 
   render() {
+    const { loadError } = this.state;
 
     return (
       <div className="row">
         <div className="col-sm-10 col-sm-offset-1">
           <div className="panel panel-default">
             <div className="panel-body">
+              { loadError &&
+                <div className="alert alert-danger">{ loadError }</div>
+              }
               { this.renderForm() }
             </div>
           </div>

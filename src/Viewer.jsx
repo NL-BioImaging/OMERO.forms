@@ -2,6 +2,7 @@ import React from 'react';
 import Select from 'react-select';
 import Forms from './Forms';
 import History from './History';
+import {buildApiUrl, fetchJson} from './api-client.mjs';
 
 import './forms.css';
 import './bootstrap.css';
@@ -52,17 +53,13 @@ export default class Viewer extends React.Component {
     const { activeFormId } = this.state;
     const { urls } = this.props;
     const request = new Request(
-      `${urls.base}list_applicable_forms/${objType}/`,
+      buildApiUrl(urls.base, 'list_applicable_forms', objType),
       {
         credentials: 'same-origin'
       }
     );
 
-    fetch(
-      request
-    ).then(
-      response => response.json()
-    ).then(
+    fetchJson(request).then(
       data => {
 
         const forms = {};
@@ -85,7 +82,9 @@ export default class Viewer extends React.Component {
         this.setState(stateUpdate);
       }
 
-    );
+    ).catch(error => {
+      console.error('Error loading applicable forms:', error);
+    });
 
   }
 

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
+import {buildApiUrl, fetchJson} from './api-client.mjs';
 
 const padDate = v => {
   return v < 10 ? '0' + v : v
@@ -26,7 +27,8 @@ export default class History extends React.Component {
     this.state = {
       formData: [],
       formVersions: {},
-      dataIndex: undefined
+      dataIndex: undefined,
+      loadError: null
     }
 
     this.switchData = this.switchData.bind(this);
@@ -52,17 +54,19 @@ export default class History extends React.Component {
     const { urls, users, lookupUsers } = this.props;
 
     const request = new Request(
-      `${urls.base}get_form_data_history/${formId}/${objType}/${objId}/`,
+      buildApiUrl(
+        urls.base,
+        'get_form_data_history',
+        formId,
+        objType,
+        objId
+      ),
       {
         credentials: 'same-origin'
       }
     );
 
-    fetch(
-      request
-    ).then(
-      response => response.json()
-    ).then(
+    fetchJson(request).then(
       jsonData => {
 
         const formVersions = {};
@@ -73,16 +77,21 @@ export default class History extends React.Component {
         this.setState({
           formData: jsonData.data.sort((a, b) => b.changedAt >= a.changedAt),
           dataIndex: 0,
-          formVersions: formVersions
+          formVersions: formVersions,
+          loadError: null
         });
 
         const uids = Array.from(new Set(jsonData.data.map(d => d.changedBy))).filter(uid => !users.hasOwnProperty(uid));
         if (uids.length > 0) {
           lookupUsers(uids);
         }
-
       }
-    );
+    ).catch(error => {
+      console.error('Error loading form history:', error);
+      this.setState({
+        loadError: `Failed to load form history: ${error.message}`
+      });
+    });
   }
 
   switchData(i, e) {
@@ -149,10 +158,14 @@ export default class History extends React.Component {
   }
 
   render() {
-    const { formData, dataIndex } = this.state;
+    const { formData, dataIndex, loadError } = this.state;
 
     return (
       <div>
+
+        { loadError &&
+          <div className="alert alert-danger">{ loadError }</div>
+        }
 
         <div className="col-sm-6">
           { this.renderPills() }
