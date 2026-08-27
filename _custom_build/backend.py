@@ -8,14 +8,15 @@ from setuptools.build_meta import *
 
 
 def _run_npm_build():
-    """Run npm install and build"""
+    """Install the locked frontend dependencies and build the bundles."""
     # Create directory if it doesn't exist
     os.makedirs("omero_forms/static/forms/js", exist_ok=True)
     # On Windows, npm is a .cmd script and needs shell=True
     # to be resolved by subprocess
     use_shell = sys.platform == "win32"
-    subprocess.check_call(
-        ["npm", "install", "--legacy-peer-deps"], shell=use_shell)
+    subprocess.check_call([
+        "npm", "ci", "--legacy-peer-deps", "--no-audit", "--no-fund"
+    ], shell=use_shell)
     subprocess.check_call(["npm", "run", "build"], shell=use_shell)
 
 

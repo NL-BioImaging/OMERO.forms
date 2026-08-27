@@ -12,21 +12,31 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         fetch-tags: true
 
     - name: Checkout the release tag explicitly
       run: git checkout ${{ github.ref }}
+
+    - name: Set and validate release version
+      shell: bash
+      run: |
+        release_version="${GITHUB_REF_NAME#v}"
+        if [[ -z "$release_version" || "$release_version" == "$GITHUB_REF_NAME" ]]; then
+          echo "Release tag must start with v (for example, v2.3.1)." >&2
+          exit 1
+        fi
+        echo "SETUPTOOLS_SCM_PRETEND_VERSION=$release_version" >> "$GITHUB_ENV"
     
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
 
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
 
@@ -34,6 +44,14 @@ jobs:
       run: |
         python -m pip install --upgrade pip build
         python -m build
+
+    - name: Verify release artifacts
+      run: >-
+        python -c "import os, pathlib;
+        expected = os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'];
+        artifacts = list(pathlib.Path('dist').iterdir());
+        assert len(artifacts) == 2, artifacts;
+        assert all(expected in artifact.name for artifact in artifacts), artifacts"
 
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
