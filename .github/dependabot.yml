@@ -1,0 +1,14 @@
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Keep routine version bumps disabled while allowing security updates.
+    open-pull-requests-limit: 0
+    groups:
+      npm-security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
