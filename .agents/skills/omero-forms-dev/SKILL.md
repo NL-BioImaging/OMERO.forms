@@ -1,6 +1,6 @@
 ---
 name: omero-forms-dev
-description: Development runbook for the OMERO.forms Django and React/RJSF plugin. Use when changing form definition or submission storage, OMERO MapAnnotation serialization, Django views and URLs, the form designer/editor/history UI, tests, packaging, or CI in this repository.
+description: Development runbook for the OMERO.forms Django and React/RJSF plugin. Use when changing form definition or submission storage, OMERO MapAnnotation serialization, Django views and URLs, the form designer/editor/history UI, tests, packaging, or CI in this repository. Also use when drafting component release notes.
 ---
 
 # OMERO.forms Development
@@ -59,3 +59,9 @@ must not be committed. Add regression tests for serialization boundaries,
 legacy compatibility, corrupt storage, ordering, and both definition and data
 history paths when those areas change. Finish with `git diff --check` and review
 the complete diff for unrelated generated files.
+
+## Release notes
+
+Before drafting a stable or beta release body, read the current
+[shared component release-note guide](https://github.com/NL-BioImaging/NL-BIOMERO/blob/master/.agents/skills/omero-biomero-expert/references/component-release-notes.md).
+Keep the format in that single source; do not copy it into this repository.
